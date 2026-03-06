@@ -1,0 +1,89 @@
+{
+  "happy_path_address": {
+    "action_id": "fixture-happy-001",
+    "incident_id": "inc-fixture-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {"location": "123 Main St", "city": "Vancouver", "cross_streets": "Main & 1st"},
+    "evidence_refs": [
+      {"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "I am at 123 Main Street", "confidence": 0.95}
+    ],
+    "uncertainty": {"p_correct": 0.95, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {"location": 0, "city": 0, "cross_streets": 0}},
+    "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+  },
+  "missing_required_evidence": {
+    "action_id": "fixture-evid-002",
+    "incident_id": "inc-fixture-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {"location": "123 Main St", "city": "Vancouver"},
+    "evidence_refs": [
+      {"type": "location_signal", "category": "sensor_or_signal", "source": "gps", "content": "49.2827,-123.1207", "confidence": 0.9}
+    ],
+    "uncertainty": {"p_correct": 0.85, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+    "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+  },
+  "invalid_turn_reference": {
+    "action_id": "fixture-evid-004",
+    "incident_id": "inc-fixture-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {"location": "123 Main St", "city": "Vancouver"},
+    "evidence_refs": [
+      {"type": "transcript_span", "category": "human_communication", "source": "turn:99", "content": "Unknown turn", "confidence": 0.8}
+    ],
+    "uncertainty": {"p_correct": 0.7, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+    "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+  },
+  "conflicting_entity_extracts": {
+    "action_id": "fixture-pred-001",
+    "incident_id": "inc-fixture-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {"location": "100 W 1st Ave", "city": "Vancouver"},
+    "evidence_refs": [
+      {"type": "entity_extract", "category": "operational_record", "source": "turn:1", "content": "100 W 1st Ave", "entity_type": "location", "confidence": 0.8},
+      {"type": "entity_extract", "category": "operational_record", "source": "turn:2", "content": "100 East 1st Ave", "entity_type": "location", "confidence": 0.8},
+      {"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "Near First", "confidence": 0.7}
+    ],
+    "uncertainty": {"p_correct": 0.6, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+    "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+  },
+  "low_confidence_critical": {
+    "action_id": "fixture-pred-004",
+    "incident_id": "inc-fixture-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {"location": "123 Main St", "city": "Vancouver"},
+    "evidence_refs": [
+      {"type": "entity_extract", "category": "operational_record", "source": "turn:1", "content": "123 Main St", "entity_type": "location", "confidence": 0.6},
+      {"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "123 Main", "confidence": 0.8}
+    ],
+    "uncertainty": {"p_correct": 0.8, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+    "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+  },
+  "stale_read_set": {
+    "action_id": "fixture-occ-002",
+    "incident_id": "inc-fixture-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {"location": "999 Broadway", "city": "Vancouver"},
+    "evidence_refs": [
+      {"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "999 Broadway", "confidence": 0.9}
+    ],
+    "uncertainty": {"p_correct": 0.9, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {"location": 0, "city": 0}},
+    "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+  },
+  "translate_valid": {
+    "action_id": "fixture-translate-001",
+    "incident_id": "inc-fixture-1",
+    "action_class": "nlp.translate_stream",
+    "proposed_payload": {"source_lang": "pa", "target_lang": "en", "text": "meri madad karo"},
+    "evidence_refs": [
+      {"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "caller speaking Punjabi", "confidence": 0.9}
+    ],
+    "uncertainty": {"p_correct": 0.9, "conflict": false},
+    "read_set": {"record_version": 0, "field_versions": {}},
+    "proposer": {"agent_id": "translator", "agent_role": "translation", "autonomy_level": "A4"}
+  }
+}

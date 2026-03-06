@@ -1,0 +1,19 @@
+{
+  "policy_id": "GOV-TEST-PERMISSIVE",
+  "policy_version": "1.0",
+  "description": "Policy comparison baseline permissive policy",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "bound": [
+          {"rule_id": "bound_confidence_low", "field": "confidence", "min": 0.5, "on_violation": "clamp"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

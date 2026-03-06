@@ -1,0 +1,31 @@
+{
+  "policy_id": "GOV-TEST-ESCALATE-PROACTIVE",
+  "policy_version": "1.0",
+  "description": "Escalate proactive condition tests",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "bound": [
+          {"rule_id": "bound_keep_in_range", "field": "confidence", "min": 0.3, "on_violation": "clamp"}
+        ],
+        "checkpoint": [
+          {"rule_id": "checkpoint_never", "trigger": "false", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "escalate_conflict", "condition": "conflicting_evidence_detected", "target": "supervisor", "fallback": "revert_to_A1"},
+          {"rule_id": "escalate_uncertainty_critical", "condition": "uncertainty_critical_field > 0.7", "target": "supervisor", "fallback": "revert_to_A1"},
+          {"rule_id": "escalate_low_p_correct", "condition": "uncertainty.p_correct < 0.5", "target": "supervisor", "fallback": "revert_to_A1"},
+          {"rule_id": "escalate_custom", "condition": "custom:contains_keyword_urgent", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {
+          "capture": ["input", "output", "decision", "timestamp", "evidence_refs"],
+          "level_selector": "uncertainty.p_correct < 0.5"
+        }
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

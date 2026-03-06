@@ -1,0 +1,25 @@
+{
+  "policy_id": "GOV-TEST-BOUND-DENY-REVERT",
+  "policy_version": "1.0",
+  "description": "Bound deny and revert tests",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "bound": [
+          {"rule_id": "bound_confidence_deny", "field": "confidence", "min": 0.85, "on_violation": "deny_and_revert"}
+        ],
+        "checkpoint": [
+          {"rule_id": "checkpoint_never", "trigger": "false", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "escalate_rule_present_for_obligation", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

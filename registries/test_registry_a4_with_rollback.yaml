@@ -1,0 +1,24 @@
+{
+  "action_classes": [
+    {
+      "name": "nlp.translate_stream",
+      "description": "Real-time translation assistance",
+      "payload_schema": {
+        "type": "object",
+        "properties": {
+          "source_lang": {"type": "string"},
+          "target_lang": {"type": "string"},
+          "text": {"type": "string"}
+        },
+        "required": ["source_lang", "target_lang", "text"]
+      },
+      "required_evidence": [],
+      "risk_level": "low",
+      "cad_fields_written": [],
+      "critical_fields": [],
+      "freshness_strategy": "none",
+      "rollback_semantics": {"reversible": true, "rollback_mechanism": "noop", "rollback_window_ms": 1000},
+      "authorized_data_sources": []
+    }
+  ]
+}

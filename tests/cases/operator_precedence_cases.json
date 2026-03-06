@@ -1,0 +1,603 @@
+[
+  {
+    "test_id": "PREC-001",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_prohibit_basic.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec1",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.95,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A2"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "denied",
+      "denial_rule_id": "prohibit_incident_closed",
+      "checkpoint_invoked": false,
+      "escalation_invoked": false,
+      "audit_emitted": true,
+      "enforcement_trace_steps": [
+        {
+          "step": "validate",
+          "result": "pass"
+        },
+        {
+          "step": "prohibit",
+          "result": "deny"
+        }
+      ]
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-002",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_bound_escalate.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec2",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.7,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "checkpoint_invoked": false,
+      "escalation_invoked": true,
+      "audit_emitted": true,
+      "enforcement_trace_steps": [
+        {
+          "step": "bound",
+          "result": "escalate"
+        },
+        {
+          "step": "escalate",
+          "result": "escalate"
+        }
+      ]
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-003",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_escalate_proactive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec3",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.9,
+        "conflict": true
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "checkpoint_invoked": false,
+      "escalation_invoked": true,
+      "audit_emitted": true
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-004",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_bound_clamp.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec4",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": " 456 broadway ",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.95,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "escalation_invoked": false,
+      "audit_emitted": true
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-005",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_bound_clamp.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec5",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.9,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {
+        "location": "old"
+      },
+      "record_version": 2,
+      "field_versions": {
+        "location": 2,
+        "city": 1
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "needs_retry_conflict",
+      "checkpoint_invoked": false,
+      "escalation_invoked": false,
+      "audit_emitted": true,
+      "enforcement_trace_steps": [
+        {
+          "step": "freshness",
+          "result": "conflict"
+        }
+      ]
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-006",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_bound_clamp.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec6",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.7,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "checkpoint_invoked": true,
+      "audit_emitted": true,
+      "enforcement_trace_steps": [
+        {
+          "step": "bound",
+          "result": "transform"
+        }
+      ]
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-007",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_prohibit_basic.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec7",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.95,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "denied",
+      "audit_emitted": true
+    },
+    "deterministic": true
+  },
+  {
+    "test_id": "PREC-008",
+    "category": "operator_precedence",
+    "policy_file": "policies/test_bound_clamp.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "prec8",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.9,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {
+        "location": "old"
+      },
+      "record_version": 3,
+      "field_versions": {
+        "location": 2,
+        "city": 2
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "needs_retry_conflict",
+      "audit_emitted": true
+    },
+    "deterministic": true
+  }
+]

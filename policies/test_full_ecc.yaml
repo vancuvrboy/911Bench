@@ -1,0 +1,87 @@
+{
+  "policy_id": "GOV-TEST-FULL-ECC",
+  "policy_version": "1.0",
+  "description": "Realistic ECC composite policy based on architecture Section 3.4.2",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "prohibit": [
+          {"rule_id": "addr_prohibit_empty", "trigger": "payload.location == ''"}
+        ],
+        "bound": [
+          {"rule_id": "addr_bound_confidence", "field": "confidence", "min": 0.85, "on_violation": "escalate"},
+          {"rule_id": "addr_bound_normalize", "transform": "normalize_address"}
+        ],
+        "checkpoint": [
+          {"rule_id": "addr_checkpoint_conflict", "trigger": "conflicting_evidence_detected", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "addr_escalate_conflict", "condition": "uncertainty.conflict == true", "target": "supervisor", "fallback": "revert_to_A1"},
+          {"rule_id": "addr_escalate_bound", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {
+        "checkpoint_presentation": ["uncertainty_markers", "source_utterance_spans", "candidate_alternatives"],
+        "audit_capture": ["all_checkpoint_presentation_fields", "pre_post_field_values", "operator_edits_diff"]
+      }
+    },
+    {
+      "name": "cad_update.narrative",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "checkpoint": [
+          {"rule_id": "narr_checkpoint_always", "trigger": "always", "approver": "call_taker", "timeout_ms": 60000}
+        ],
+        "escalate": [
+          {"rule_id": "narr_escalate_low_confidence", "condition": "uncertainty.p_correct < 0.5", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp"]}
+      },
+      "evidence_requirements": {
+        "checkpoint_presentation": ["draft_text_with_uncertainty_markers", "source_utterance_spans"],
+        "audit_capture": ["draft_text", "operator_edits_diff", "final_committed_text"]
+      }
+    },
+    {
+      "name": "cad_update.caller_phone_number",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "bound": [
+          {"rule_id": "phone_bound_confidence", "field": "confidence", "min": 0.7, "on_violation": "escalate"}
+        ],
+        "checkpoint": [
+          {"rule_id": "phone_checkpoint_sparse", "trigger": "evidence_count < 2", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "phone_escalate_conflict", "condition": "conflicting_evidence_detected", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    },
+    {
+      "name": "nlp.translate_stream",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A4",
+      "operators": {
+        "prohibit": [
+          {"rule_id": "translate_prohibit_training", "trigger": "payload.use_in_model_training == true"}
+        ],
+        "bound": [
+          {"rule_id": "translate_bound_langs", "field": "target_lang", "allowed_values": ["en", "fr", "es", "zh", "pa", "ar"], "on_violation": "escalate"}
+        ],
+        "escalate": [
+          {"rule_id": "translate_escalate_unsupported", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "timestamp"]}
+      },
+      "evidence_requirements": {"audit_capture": ["source_text", "translated_text", "source_lang_detected"]}
+    }
+  ]
+}

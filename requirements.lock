@@ -1,0 +1,2 @@
+# Pinned runtime/test dependency set for reproducible local and CI runs.
+PyYAML==6.0.2

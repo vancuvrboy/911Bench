@@ -1,0 +1,2305 @@
+[
+  {
+    "test_id": "COMP-001",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_permissive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.7,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed"
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-001-R",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_restrictive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp1r",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.98,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A2"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "checkpoint_invoked": true
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-002",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_bound_escalate.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp2a",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.7,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "escalation_invoked": true
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-002-B",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_permissive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp2b",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.7,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "escalation_invoked": false
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-003",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_prohibit_basic.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp3a",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.95,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "denied"
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-003-B",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_permissive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp3b",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "caller says address",
+          "confidence": 0.95
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.95,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed"
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-004",
+    "category": "policy_comparison",
+    "mode": "batch_policy_comparison",
+    "policy_file": "policies/test_permissive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "batch": {
+      "policies": [
+        "policies/test_permissive.yaml",
+        "policies/test_restrictive.yaml",
+        "policies/test_escalate_proactive.yaml"
+      ],
+      "proposals": [
+        {
+          "action_id": "comp4-0",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "urgent location",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-1",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "101 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-2",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "102 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-3",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "103 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-4",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "104 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-5",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "105 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-6",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "106 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-7",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "107 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-8",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "108 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-9",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "109 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-10",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "110 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-11",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "urgent location",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-12",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "112 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-13",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "113 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-14",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "114 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-15",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "115 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-16",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "116 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-17",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "117 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-18",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "118 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-19",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "119 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-20",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "120 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-21",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "121 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-22",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "urgent location",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-23",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "123 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-24",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "124 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-25",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "125 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-26",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "126 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-27",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "127 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-28",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "128 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-29",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "129 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-30",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "130 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-31",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "131 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-32",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "132 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-33",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "urgent location",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-34",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "134 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-35",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "135 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-36",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "136 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-37",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "137 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-38",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "138 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-39",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "139 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-40",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "140 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-41",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "141 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-42",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "142 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-43",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "143 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.5,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-44",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "urgent location",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.6000000000000001,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-45",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "145 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.7000000000000001,
+            "conflict": true
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-46",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "146 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.8,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-47",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "147 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.9,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-48",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "148 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.99,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        },
+        {
+          "action_id": "comp4-49",
+          "incident_id": "inc-1",
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "149 Main St",
+            "city": "Vancouver"
+          },
+          "evidence_refs": [
+            {
+              "type": "transcript_span",
+              "category": "human_communication",
+              "source": "turn:1",
+              "content": "caller says address",
+              "confidence": 0.95
+            }
+          ],
+          "uncertainty": {
+            "p_correct": 0.4,
+            "conflict": false
+          },
+          "read_set": {
+            "record_version": 0,
+            "field_versions": {
+              "location": 0,
+              "city": 0
+            }
+          },
+          "proposer": {
+            "agent_id": "911buddy",
+            "agent_role": "dsa",
+            "autonomy_level": "A3"
+          }
+        }
+      ]
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "significant_behavior_difference": true
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-005",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_checkpoint_conditional.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp5",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "x",
+          "confidence": 0.9
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.9,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "checkpoint_invoked": true
+    },
+    "deterministic": false
+  },
+  {
+    "test_id": "COMP-005-B",
+    "category": "policy_comparison",
+    "policy_file": "policies/test_permissive.yaml",
+    "registry_file": "registries/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "comp5b",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {
+        "location": "123 Main St",
+        "city": "Vancouver"
+      },
+      "evidence_refs": [
+        {
+          "type": "transcript_span",
+          "category": "human_communication",
+          "source": "turn:1",
+          "content": "x",
+          "confidence": 0.9
+        }
+      ],
+      "uncertainty": {
+        "p_correct": 0.9,
+        "conflict": false
+      },
+      "read_set": {
+        "record_version": 0,
+        "field_versions": {
+          "location": 0,
+          "city": 0
+        }
+      },
+      "proposer": {
+        "agent_id": "911buddy",
+        "agent_role": "dsa",
+        "autonomy_level": "A3"
+      }
+    },
+    "plant_state": {
+      "cad_state": {},
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0,
+        "cross_streets": 0,
+        "narrative": 0,
+        "caller_phone_number": 0
+      }
+    },
+    "checkpoint_shim": "auto_approve",
+    "context_snapshot": {
+      "transcript_turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sop_ids": [
+        "fire-res-v2",
+        "common-v1"
+      ]
+    },
+    "expected": {
+      "decision": "executed",
+      "checkpoint_invoked": false
+    },
+    "deterministic": false
+  }
+]

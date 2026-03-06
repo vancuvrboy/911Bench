@@ -1,0 +1,12 @@
+{
+  "test_prohibit_basic.yaml": ["PREC-001", "PREC-007", "PRED-009", "COMP-003"],
+  "test_bound_escalate.yaml": ["PREC-002", "CHKPT-006", "CHKPT-007", "CHKPT-008", "CHKPT-009", "CHKPT-010", "CHKPT-011", "PRED-008", "COMP-002"],
+  "test_bound_clamp.yaml": ["PREC-004", "PREC-005", "PREC-006", "PREC-008", "EVID-001", "EVID-002", "EVID-003", "EVID-004", "EVID-005", "EVID-006", "EVID-007", "EVID-008", "EVID-009", "OCC-001", "OCC-002", "OCC-003", "OCC-005"],
+  "test_checkpoint_conditional.yaml": ["CHKPT-001", "CHKPT-002", "CHKPT-003", "CHKPT-004", "CHKPT-005", "CHKPT-012", "PRED-007", "PRED-010", "OCC-004", "COMP-005"],
+  "test_escalate_proactive.yaml": ["PREC-003", "PRED-001", "PRED-002", "PRED-003", "PRED-004", "PRED-005", "PRED-006", "PRED-011", "PRED-012", "COMP-004"],
+  "test_obligations_missing.yaml": ["OBLIG-001"],
+  "test_permissive.yaml": ["OBLIG-006", "COMP-001", "COMP-002-B", "COMP-003-B", "COMP-005-B", "COMP-004"],
+  "test_restrictive.yaml": ["COMP-001-R", "COMP-004"],
+  "test_full_ecc.yaml": ["OBLIG-004"],
+  "test_obligations_a2_checkpoint.yaml": ["OBLIG-005"]
+}

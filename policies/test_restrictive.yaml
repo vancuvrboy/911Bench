@@ -1,0 +1,26 @@
+{
+  "policy_id": "GOV-TEST-RESTRICTIVE",
+  "policy_version": "1.0",
+  "description": "Policy comparison restrictive policy",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "bound": [
+          {"rule_id": "bound_confidence_tight", "field": "confidence", "min": 0.95, "on_violation": "escalate"}
+        ],
+        "checkpoint": [
+          {"rule_id": "checkpoint_always", "trigger": "always", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "escalate_bound", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"},
+          {"rule_id": "escalate_low_confidence", "condition": "uncertainty.p_correct < 0.7", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

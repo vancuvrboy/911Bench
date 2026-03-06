@@ -1,0 +1,60 @@
+{
+  "seed_context": {
+    "incident_id": "inc-conformance-1",
+    "transcript": [
+      {
+        "turn": 1,
+        "text": "Caller gave 10 Conformance St"
+      }
+    ],
+    "cad_view": {
+      "location": "Unknown"
+    },
+    "location": {
+      "ani_ali": "10 Conformance St"
+    },
+    "sop_refs": [
+      "fire-res-v2"
+    ]
+  },
+  "snapshot_args": {
+    "incident_id": "inc-conformance-1",
+    "agent_id": "911buddy",
+    "agent_secret": "dev-911buddy-secret"
+  },
+  "proposal": {
+    "action_id": "act-conformance-1",
+    "incident_id": "inc-conformance-1",
+    "action_class": "cad_update.address",
+    "proposed_payload": {
+      "location": "10 Conformance St",
+      "city": "Vancouver"
+    },
+    "evidence_refs": [
+      {
+        "type": "transcript_span",
+        "category": "human_communication",
+        "source": "turn:1",
+        "content": "Caller gave 10 Conformance St",
+        "confidence": 0.95
+      }
+    ],
+    "uncertainty": {
+      "p_correct": 0.95,
+      "conflict": false
+    },
+    "read_set": {
+      "record_version": 0,
+      "field_versions": {
+        "location": 0,
+        "city": 0
+      }
+    },
+    "proposer": {
+      "agent_id": "911buddy",
+      "agent_secret": "dev-911buddy-secret",
+      "agent_role": "dsa",
+      "autonomy_level": "A3"
+    }
+  }
+}

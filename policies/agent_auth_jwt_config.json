@@ -1,0 +1,10 @@
+{
+  "auth_mode": "jwt_hs256",
+  "jwt": {
+    "issuer": "acaf-dev",
+    "audience": "911bench-governance",
+    "hs256_secret": "dev-jwt-signing-secret-change-me",
+    "clock_skew_sec": 60
+  },
+  "agents": []
+}

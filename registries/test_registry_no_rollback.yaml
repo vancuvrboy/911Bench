@@ -1,0 +1,43 @@
+{
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "description": "Update incident location in CAD",
+      "payload_schema": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"},
+          "city": {"type": "string"}
+        },
+        "required": ["location"]
+      },
+      "required_evidence": ["human_communication"],
+      "risk_level": "high",
+      "cad_fields_written": ["location", "city"],
+      "critical_fields": ["location"],
+      "freshness_strategy": "occ",
+      "rollback_semantics": null,
+      "authorized_data_sources": ["canada_post_api"]
+    },
+    {
+      "name": "nlp.translate_stream",
+      "description": "Real-time translation assistance",
+      "payload_schema": {
+        "type": "object",
+        "properties": {
+          "source_lang": {"type": "string"},
+          "target_lang": {"type": "string"},
+          "text": {"type": "string"}
+        },
+        "required": ["source_lang", "target_lang", "text"]
+      },
+      "required_evidence": [],
+      "risk_level": "low",
+      "cad_fields_written": [],
+      "critical_fields": [],
+      "freshness_strategy": "none",
+      "rollback_semantics": null,
+      "authorized_data_sources": []
+    }
+  ]
+}

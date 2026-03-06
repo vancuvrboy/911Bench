@@ -1,0 +1,28 @@
+{
+  "agents": [
+    {
+      "agent_id": "911buddy",
+      "secret": "dev-911buddy-secret",
+      "role": "dsa",
+      "allowed_action_classes": [
+        "cad_update.address",
+        "cad_update.narrative",
+        "cad_update.caller_phone_number"
+      ]
+    },
+    {
+      "agent_id": "translator",
+      "secret": "dev-translator-secret",
+      "role": "translation",
+      "allowed_action_classes": [
+        "nlp.translate_stream"
+      ]
+    },
+    {
+      "agent_id": "retriever",
+      "secret": "dev-retriever-secret",
+      "role": "retrieval",
+      "allowed_action_classes": []
+    }
+  ]
+}

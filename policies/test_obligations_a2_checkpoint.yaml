@@ -1,0 +1,19 @@
+{
+  "policy_id": "GOV-TEST-OBLIG-A2-CHECKPOINT",
+  "policy_version": "1.0",
+  "description": "A2 with audit and checkpoint, no escalate",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "checkpoint": [
+          {"rule_id": "checkpoint_always", "trigger": "always", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

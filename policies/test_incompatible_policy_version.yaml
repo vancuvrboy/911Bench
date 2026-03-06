@@ -1,0 +1,22 @@
+{
+  "policy_id": "GOV-TEST-INCOMPATIBLE",
+  "policy_version": "2.0",
+  "description": "Intentionally incompatible policy major version for compatibility checks",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "prohibit": [],
+        "bound": [],
+        "checkpoint": [
+          {"rule_id": "addr_cp", "trigger": "always", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [],
+        "audit": {"capture": ["input", "output", "decision", "timestamp"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

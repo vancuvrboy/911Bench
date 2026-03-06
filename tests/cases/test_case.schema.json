@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovernanceHarnessTestCase",
+  "type": "object",
+  "required": ["test_id", "category", "policy_file", "registry_file", "expected"],
+  "properties": {
+    "test_id": {"type": "string"},
+    "category": {"type": "string"},
+    "mode": {"type": "string"},
+    "policy_file": {"type": "string"},
+    "registry_file": {"type": "string"},
+    "evidence_config_file": {"type": "string"},
+    "action_proposal": {"type": "object"},
+    "batch": {"type": "object"},
+    "plant_state": {"type": "object"},
+    "checkpoint_shim": {"type": "string"},
+    "checkpoint_shim_args": {"type": "object"},
+    "context_snapshot": {"type": "object"},
+    "expected": {"type": "object"},
+    "deterministic": {"type": "boolean"}
+  }
+}

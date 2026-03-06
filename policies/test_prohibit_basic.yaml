@@ -1,0 +1,44 @@
+{
+  "policy_id": "GOV-TEST-PROHIBIT-BASIC",
+  "policy_version": "1.0",
+  "description": "Prohibit dominance tests",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "prohibit": [
+          {"rule_id": "prohibit_incident_closed", "trigger": "payload.location == ''"},
+          {"rule_id": "prohibit_no_evidence", "trigger": "evidence_count < 1"}
+        ],
+        "bound": [
+          {"rule_id": "bound_confidence_floor", "field": "confidence", "min": 0.2, "on_violation": "escalate"}
+        ],
+        "checkpoint": [
+          {"rule_id": "checkpoint_never", "trigger": "false", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "escalate_bound", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    },
+    {
+      "name": "nlp.translate_stream",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "prohibit": [
+          {"rule_id": "translate_prohibit_no_evidence", "trigger": "evidence_count < 1"}
+        ],
+        "bound": [
+          {"rule_id": "translate_bound_target_lang", "field": "target_lang", "allowed_values": ["en", "fr", "es"], "on_violation": "clamp"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

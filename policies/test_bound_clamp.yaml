@@ -1,0 +1,27 @@
+{
+  "policy_id": "GOV-TEST-BOUND-CLAMP",
+  "policy_version": "1.0",
+  "description": "Bound clamp and deterministic transform tests",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "bound": [
+          {"rule_id": "bound_confidence_clamp", "field": "confidence", "min": 0.85, "max": 0.99, "on_violation": "clamp"},
+          {"rule_id": "bound_normalize_address", "transform": "normalize_address"}
+        ],
+        "checkpoint": [
+          {"rule_id": "checkpoint_conflict", "trigger": "conflicting_evidence_detected", "approver": "call_taker", "timeout_ms": 30000},
+          {"rule_id": "checkpoint_sparse_evidence", "trigger": "evidence_count < 2", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "escalate_on_checkpoint_defer", "condition": "uncertainty.conflict == true", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {"capture": ["input", "output", "decision", "timestamp", "evidence_refs"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

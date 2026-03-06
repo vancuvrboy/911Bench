@@ -1,0 +1,17 @@
+{
+  "empty_state": {
+    "cad_state": {},
+    "record_version": 0,
+    "field_versions": {"location": 0, "city": 0, "cross_streets": 0, "narrative": 0, "caller_phone_number": 0}
+  },
+  "mid_call_state": {
+    "cad_state": {"location": "100 W 1st Ave", "city": "Vancouver", "narrative": "Caller reports smoke."},
+    "record_version": 3,
+    "field_versions": {"location": 2, "city": 1, "cross_streets": 0, "narrative": 3, "caller_phone_number": 0}
+  },
+  "conflicting_state": {
+    "cad_state": {"location": "100 W 1st Ave", "city": "Vancouver"},
+    "record_version": 5,
+    "field_versions": {"location": 4, "city": 2, "cross_streets": 1, "narrative": 5, "caller_phone_number": 1}
+  }
+}

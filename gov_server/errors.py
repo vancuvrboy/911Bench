@@ -7,3 +7,7 @@ class PolicyValidationError(ValueError):
 
 class ProposalValidationError(ValueError):
     """Raised when a proposal fails precondition validation."""
+
+
+class VersionCompatibilityError(ValueError):
+    """Raised when loaded artifacts are incompatible with supported versions."""

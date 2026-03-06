@@ -1,0 +1,27 @@
+{
+  "policy_id": "GOV-TEST-OBLIGATIONS-MISSING",
+  "policy_version": "1.0",
+  "description": "Deliberately invalid policy for obligation enforcement",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "bound": [
+          {"rule_id": "bound_without_checkpoint", "field": "confidence", "min": 0.85, "on_violation": "clamp"}
+        ]
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    },
+    {
+      "name": "nlp.translate_stream",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A4",
+      "operators": {
+        "audit": {"capture": ["input", "output", "decision"]}
+      },
+      "evidence_requirements": {"audit_capture": ["all"]}
+    }
+  ]
+}

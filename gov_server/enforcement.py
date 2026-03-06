@@ -48,6 +48,7 @@ class Engine:
         }
         trace: list[JSONObject] = []
         payload = copy.deepcopy(proposal.get("proposed_payload", {}))
+        escalated_before_checkpoint = False
 
         outcome = self._base_outcome(proposal)
         action_class_name = proposal.get("action_class")
@@ -107,16 +108,19 @@ class Engine:
             )
             trace.append(self._trace("escalate", esc["trace_result"], esc.get("detail"), StepTimer("escalate")))
             if esc["status"] == "denied":
+                reason = esc.get("reason", "escalation_denied")
                 outcome.update(
                     {
                         "decision": "denied",
-                        "denial_reason": esc.get("reason", "escalation_denied"),
+                        "denial_reason": reason,
+                        "degraded_mode_available": reason in {"escalation_timeout", "max_escalation_depth"},
                         "escalation": esc["escalation"],
                     }
                 )
                 return self._finalize(outcome, proposal, trace, payload, None)
             payload = esc["payload"]
             outcome["escalation"] = esc["escalation"]
+            escalated_before_checkpoint = True
 
         # Step 4: Freshness
         timer = StepTimer("freshness")
@@ -157,16 +161,19 @@ class Engine:
             )
             trace.append(self._trace("escalate", esc["trace_result"], esc.get("detail"), timer))
             if esc["status"] == "denied":
+                reason = esc.get("reason", "escalation_denied")
                 outcome.update(
                     {
                         "decision": "denied",
-                        "denial_reason": esc.get("reason", "escalation_denied"),
+                        "denial_reason": reason,
+                        "degraded_mode_available": reason in {"escalation_timeout", "max_escalation_depth"},
                         "escalation": esc["escalation"],
                     }
                 )
                 return self._finalize(outcome, proposal, trace, payload, None)
             payload = esc["payload"]
             outcome["escalation"] = esc["escalation"]
+            escalated_before_checkpoint = True
         else:
             trace.append(self._trace("escalate", "pass", None, timer))
 
@@ -174,7 +181,9 @@ class Engine:
         timer = StepTimer("checkpoint")
         checkpoint_rule = self._match_checkpoint_rule(proposal, payload, policy_class, registry_class)
         checkpoint_ref: str | None = None
-        if checkpoint_rule:
+        if escalated_before_checkpoint:
+            trace.append(self._trace("checkpoint", "pass", {"skipped_due_to_escalation": True}, timer))
+        elif checkpoint_rule:
             checkpoint_ref, response, latency_ms = self.checkpoint.request(
                 payload=payload,
                 approver_role=checkpoint_rule.get("approver", policy_class["controlling_entity"]["role"]),
@@ -221,10 +230,12 @@ class Engine:
                     target_hint=response.deferred_to,
                 )
                 if esc["status"] == "denied":
+                    reason = esc.get("reason", "escalation_denied")
                     outcome.update(
                         {
                             "decision": "denied",
-                            "denial_reason": esc.get("reason", "escalation_denied"),
+                            "denial_reason": reason,
+                            "degraded_mode_available": reason in {"escalation_timeout", "max_escalation_depth"},
                             "escalation": esc["escalation"],
                         }
                     )
@@ -560,8 +571,22 @@ class Engine:
         final_payload: JSONObject,
         checkpoint_ref: str | None,
     ) -> JSONObject:
+        policy_class = self.bundle.policy_by_action_class.get(proposal.get("action_class"), {})
+        registry_class = self.bundle.registry_by_action_class.get(proposal.get("action_class"), {})
+        audit_cfg = policy_class.get("operators", {}).get("audit", {}) if isinstance(policy_class, dict) else {}
+        selector = audit_cfg.get("level_selector") if isinstance(audit_cfg, dict) else None
+        audit_level = "standard"
+        if selector:
+            pred_ctx = PredicateContext(
+                proposal=proposal,
+                payload=final_payload,
+                action_registry_entry=registry_class if isinstance(registry_class, dict) else {},
+            )
+            if self.predicate_engine.evaluate(str(selector), pred_ctx):
+                audit_level = "extended"
+
         audit_timer = StepTimer("audit")
-        trace.append(self._trace("audit", "pass", {"captured": True}, audit_timer))
+        trace.append(self._trace("audit", "pass", {"captured": True, "level": audit_level}, audit_timer))
         outcome["enforcement_trace"] = trace
 
         audit_ref = f"audit-{uuid.uuid4().hex[:12]}"
@@ -573,5 +598,6 @@ class Engine:
             "trace": copy.deepcopy(trace),
             "final_payload": copy.deepcopy(final_payload),
             "checkpoint_ref": checkpoint_ref,
+            "audit_level": audit_level,
         }
         return outcome

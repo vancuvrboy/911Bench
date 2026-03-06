@@ -28,11 +28,12 @@ class EvidenceValidator:
     ) -> list[EvidenceError]:
         errors: list[EvidenceError] = []
         refs = proposal.get("evidence_refs", [])
+        required_categories = set(action_registry_entry.get("required_evidence", []))
         if not refs:
-            errors.append(EvidenceError("missing_required_evidence", "no evidence_refs"))
+            if required_categories:
+                errors.append(EvidenceError("missing_required_evidence", "no evidence_refs"))
             return errors
 
-        required_categories = set(action_registry_entry.get("required_evidence", []))
         present_categories: set[str] = set()
 
         transcript_turns = set(context_snapshot.get("transcript_turns", []))
