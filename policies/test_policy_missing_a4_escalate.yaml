@@ -1,0 +1,16 @@
+{
+  "policy_id": "GOV-TEST-MISS-A4",
+  "policy_version": "1.0",
+  "description": "A4 policy without escalate",
+  "action_classes": [
+    {
+      "name": "nlp.translate_stream",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A4",
+      "operators": {
+        "audit": {"capture": ["input", "output", "decision"]}
+      },
+      "evidence_requirements": {}
+    }
+  ]
+}

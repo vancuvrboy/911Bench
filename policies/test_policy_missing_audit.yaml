@@ -1,0 +1,18 @@
+{
+  "policy_id": "GOV-TEST-MISS-AUDIT",
+  "policy_version": "1.0",
+  "description": "Missing audit to trigger obligation",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A2",
+      "operators": {
+        "checkpoint": [
+          {"rule_id": "addr_checkpoint_always", "trigger": "always", "approver": "call_taker", "timeout_ms": 30000}
+        ]
+      },
+      "evidence_requirements": {}
+    }
+  ]
+}

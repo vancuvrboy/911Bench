@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/domain_evidence_config.schema.json",
+  "title": "DomainEvidenceConfig",
+  "description": "Registers domain-specific evidence subtypes that refine the five abstract categories. Loaded at Governance server startup. Architecture Document Section 3.3.3.",
+  "type": "object",
+  "required": ["domain", "version", "subtypes"],
+  "properties": {
+    "domain": { "type": "string", "description": "Domain identifier (e.g., 'ecc', 'healthcare', 'aviation')." },
+    "version": { "type": "string" },
+    "subtypes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "category", "required_fields", "validation_function"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Subtype identifier (e.g., 'transcript_span', 'entity_extract'). Used in evidence_ref.type."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["human_communication", "operational_record", "procedural_reference", "sensor_or_signal", "external_source"],
+            "description": "Abstract category this subtype belongs to."
+          },
+          "required_fields": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Fields that must be present in evidence_refs of this subtype (beyond the common fields: type, category, source, content, confidence)."
+          },
+          "validation_function": {
+            "type": "string",
+            "description": "Name of a registered Python validation function that checks source validity and domain-specific constraints for this subtype. Must be deterministic and side-effect-free."
+          },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

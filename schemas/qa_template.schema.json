@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/qa_template.schema.json",
+  "title": "QATemplate",
+  "description": "Defines the QA rubric used by the evaluator agent. Architecture Document Section 2.2.3.",
+  "type": "object",
+  "required": ["ruleset_id", "version", "normalize_to", "templates"],
+  "properties": {
+    "ruleset_id": { "type": "string" },
+    "version": { "type": "string" },
+    "normalize_to": { "type": "integer", "minimum": 1, "description": "Score normalization target (e.g., 100)." },
+    "templates": {
+      "type": "object",
+      "required": ["COMMON"],
+      "properties": {
+        "COMMON": { "$ref": "#/$defs/template_block" },
+        "FIRE": { "$ref": "#/$defs/template_block_typed" },
+        "POLICE": { "$ref": "#/$defs/template_block_typed" },
+        "EMS": { "$ref": "#/$defs/template_block_typed" }
+      }
+    }
+  },
+  "$defs": {
+    "template_block": {
+      "type": "object",
+      "required": ["sections"],
+      "properties": {
+        "sections": { "type": "array", "items": { "$ref": "#/$defs/section" } }
+      }
+    },
+    "template_block_typed": {
+      "type": "object",
+      "required": ["sections"],
+      "properties": {
+        "version_date": { "type": "string", "format": "date" },
+        "global_guidance": {
+          "type": "object",
+          "properties": {
+            "YES": { "type": "string" },
+            "NO": { "type": "string" },
+            "REFUSED": { "type": "string" },
+            "NA": { "type": "string" },
+            "cad_vs_interview": { "type": "string" },
+            "rationale_length": { "type": "string" },
+            "points_rule": { "type": "string" }
+          }
+        },
+        "sections": { "type": "array", "items": { "$ref": "#/$defs/section" } }
+      }
+    },
+    "section": {
+      "type": "object",
+      "required": ["name", "answer_set", "items"],
+      "properties": {
+        "name": { "type": "string" },
+        "answer_set": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["YES", "NO", "REFUSED", "NA"] }
+        },
+        "section_guidance": { "type": "string" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/rubric_item" } }
+      }
+    },
+    "rubric_item": {
+      "type": "object",
+      "required": ["id", "question", "points"],
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "points": { "type": "integer", "minimum": 0 },
+        "guidance": { "type": "string" },
+        "yes_examples": { "type": "array", "items": { "type": "string" } },
+        "no_examples": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

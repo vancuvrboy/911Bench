@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/governance_policy.schema.json",
+  "title": "GovernancePolicy",
+  "description": "Schema for governance policy YAML files. Maps to the paper's authority policy tuple π = ⟨a, r, A, O, E⟩. Architecture Document Section 3.4.2.",
+  "type": "object",
+  "required": ["policy_id", "policy_version", "description", "action_classes"],
+  "properties": {
+    "policy_id": { "type": "string", "description": "Unique policy bundle identifier." },
+    "policy_version": { "type": "string" },
+    "description": { "type": "string" },
+    "action_classes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/action_class_policy" }
+    }
+  },
+  "$defs": {
+    "action_class_policy": {
+      "type": "object",
+      "required": ["name", "controlling_entity", "autonomy_level", "operators", "evidence_requirements"],
+      "description": "Policy for a single action class. Maps to π = ⟨a, r, A, O, E⟩.",
+      "properties": {
+        "name": { "type": "string", "description": "π.a — action class name. Must exist in action_class registry." },
+        "controlling_entity": {
+          "type": "object",
+          "required": ["role", "escalation_target"],
+          "description": "π.r — controlling role and escalation target.",
+          "properties": {
+            "role": { "type": "string", "description": "Authorized role (e.g., 'call_taker', 'dispatcher', 'supervisor')." },
+            "escalation_target": { "type": "string", "description": "Role to escalate to (e.g., 'supervisor')." }
+          }
+        },
+        "autonomy_level": {
+          "type": "string",
+          "enum": ["A0", "A1", "A2", "A3", "A4", "A5"],
+          "description": "π.A — execution/authorization mode."
+        },
+        "operators": {
+          "type": "object",
+          "description": "π.O — the five governance operators. Audit is mandatory (Obligation 1).",
+          "required": ["audit"],
+          "properties": {
+            "prohibit": { "type": "array", "items": { "$ref": "#/$defs/prohibit_rule" } },
+            "bound": { "type": "array", "items": { "$ref": "#/$defs/bound_rule" } },
+            "escalate": { "type": "array", "items": { "$ref": "#/$defs/escalate_rule" } },
+            "checkpoint": { "type": "array", "items": { "$ref": "#/$defs/checkpoint_rule" } },
+            "audit": { "$ref": "#/$defs/audit_config" }
+          }
+        },
+        "evidence_requirements": {
+          "type": "object",
+          "description": "π.E — evidence package. Separates what is shown at checkpoints from what is logged.",
+          "properties": {
+            "checkpoint_presentation": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Evidence fields to show the approver at decision time."
+            },
+            "audit_capture": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Evidence fields to log (superset of checkpoint_presentation)."
+            }
+          }
+        }
+      }
+    },
+    "prohibit_rule": {
+      "type": "object",
+      "required": ["rule_id", "trigger"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "trigger": { "type": "string", "description": "Predicate expression or named predicate function. Can reference evidence predicates." }
+      }
+    },
+    "bound_rule": {
+      "type": "object",
+      "required": ["rule_id"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "field": { "type": "string", "description": "Payload field to constrain." },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "allowed_values": { "type": "array", "items": { "type": "string" } },
+        "transform": { "type": "string", "description": "Named deterministic transform function." },
+        "on_violation": {
+          "type": "string",
+          "enum": ["escalate", "clamp", "deny_and_revert"],
+          "default": "escalate",
+          "description": "Behavior on violation. 'escalate' invokes matching Escalate rule (paper default). 'clamp' adjusts to nearest bound. 'deny_and_revert' denies with degraded_mode_available."
+        }
+      }
+    },
+    "escalate_rule": {
+      "type": "object",
+      "required": ["rule_id", "condition", "target", "fallback"],
+      "description": "Dual-mode: reactive (invoked by Bound on_violation:escalate or Checkpoint deferred_escalated) or proactive (independent condition evaluated at step 5).",
+      "properties": {
+        "rule_id": { "type": "string" },
+        "condition": {
+          "type": "string",
+          "description": "Predicate expression, named predicate, or 'bound_violation'. Can reference evidence predicates."
+        },
+        "target": { "type": "string", "description": "Escalation target role (e.g., 'supervisor')." },
+        "fallback": {
+          "type": "string",
+          "description": "Safe fallback on timeout (e.g., 'revert_to_A1')."
+        }
+      }
+    },
+    "checkpoint_rule": {
+      "type": "object",
+      "required": ["rule_id", "trigger", "approver", "timeout_ms"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "trigger": {
+          "type": "string",
+          "description": "'always' or a predicate expression. Can reference evidence predicates."
+        },
+        "approver": { "type": "string", "description": "Approver role." },
+        "timeout_ms": { "type": "integer", "minimum": 1000 }
+      }
+    },
+    "audit_config": {
+      "type": "object",
+      "required": ["capture"],
+      "properties": {
+        "capture": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields to capture in the audit log."
+        },
+        "level_selector": {
+          "type": "string",
+          "description": "Optional evidence predicate to conditionally select extended audit capture."
+        }
+      }
+    }
+  }
+}

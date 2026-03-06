@@ -1,0 +1,59 @@
+{
+  "policy_id": "GOV-TEST-BASELINE",
+  "policy_version": "1.0",
+  "description": "Test baseline governance policy",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "prohibit": [
+          {"rule_id": "addr_prohibit_empty", "trigger": "payload.location == ''"}
+        ],
+        "bound": [
+          {"rule_id": "addr_bound_confidence", "field": "confidence", "min": 0.85, "on_violation": "escalate"},
+          {"rule_id": "addr_bound_normalize", "transform": "normalize_address"}
+        ],
+        "checkpoint": [
+          {"rule_id": "addr_checkpoint_conflict", "trigger": "conflicting_evidence_detected", "approver": "call_taker", "timeout_ms": 30000}
+        ],
+        "escalate": [
+          {"rule_id": "addr_escalate_conflict", "condition": "uncertainty.conflict == true", "target": "supervisor", "fallback": "revert_to_A1"},
+          {"rule_id": "addr_escalate_bound", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {
+          "capture": ["input", "output", "decision", "timestamp", "evidence_refs"]
+        }
+      },
+      "evidence_requirements": {
+        "checkpoint_presentation": ["uncertainty_markers", "source_utterance_spans"],
+        "audit_capture": ["all_checkpoint_presentation_fields", "operator_edits_diff"]
+      }
+    },
+    {
+      "name": "nlp.translate_stream",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A4",
+      "operators": {
+        "bound": [
+          {
+            "rule_id": "translate_bound_langs",
+            "field": "target_lang",
+            "allowed_values": ["en", "fr", "es"],
+            "on_violation": "escalate"
+          }
+        ],
+        "escalate": [
+          {"rule_id": "translate_escalate_bound", "condition": "bound_violation", "target": "supervisor", "fallback": "revert_to_A1"}
+        ],
+        "audit": {
+          "capture": ["input", "output", "timestamp"]
+        }
+      },
+      "evidence_requirements": {
+        "audit_capture": ["source_text", "translated_text"]
+      }
+    }
+  ]
+}

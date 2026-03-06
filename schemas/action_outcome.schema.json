@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/action_outcome.schema.json",
+  "title": "ActionOutcome",
+  "description": "The Governance server's response to an ActionProposal. Architecture Document Section 3.3.2.",
+  "type": "object",
+  "required": ["action_id", "decision", "degraded_mode_available", "policy_id", "policy_hash", "audit_ref", "enforcement_trace"],
+  "properties": {
+    "action_id": {
+      "type": "string",
+      "description": "Echo from the ActionProposal."
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["denied", "needs_checkpoint", "escalated", "executed", "needs_retry_conflict"],
+      "description": "Final enforcement decision."
+    },
+    "denial_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable explanation if denied."
+    },
+    "denial_rule_id": {
+      "type": ["string", "null"],
+      "description": "The policy rule_id that triggered the denial."
+    },
+    "degraded_mode_available": {
+      "type": "boolean",
+      "description": "True if the agent may re-propose at a lower autonomy level. Set on deny_and_revert Bound violations."
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "Policy bundle identifier used for this evaluation."
+    },
+    "policy_hash": {
+      "type": "string",
+      "description": "SHA-256 of the serialized policy YAML."
+    },
+    "checkpoint": {
+      "type": ["object", "null"],
+      "description": "Present if a checkpoint was involved in enforcement.",
+      "properties": {
+        "request_id": { "type": "string" },
+        "response": {
+          "type": "string",
+          "enum": ["approved", "denied", "edited_approved", "deferred_escalated", "timeout"]
+        },
+        "edited_payload": {
+          "type": ["object", "null"],
+          "description": "Modified payload if the approver edited the proposal."
+        },
+        "deferred_to": {
+          "type": ["string", "null"],
+          "description": "Escalation target role if deferred."
+        },
+        "latency_ms": {
+          "type": "integer",
+          "description": "Time from checkpoint request to response."
+        }
+      },
+      "required": ["request_id", "response", "latency_ms"]
+    },
+    "escalation": {
+      "type": ["object", "null"],
+      "description": "Present if Escalate was invoked (reactive or proactive).",
+      "properties": {
+        "trigger": {
+          "type": "string",
+          "description": "What triggered escalation."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["bound", "checkpoint_deferred", "explicit_rule"],
+          "description": "Which activation mode triggered escalation."
+        },
+        "target": {
+          "type": "string",
+          "description": "Role to which the proposal was escalated."
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["approved", "denied", "edited_approved", "re_escalated", "timeout"],
+          "description": "Escalation target's decision."
+        },
+        "edited_payload": {
+          "type": ["object", "null"],
+          "description": "Modified payload if the escalation target edited the proposal."
+        },
+        "re_escalated_to": {
+          "type": ["string", "null"],
+          "description": "Higher role if re-escalated."
+        },
+        "latency_ms": {
+          "type": "integer"
+        }
+      },
+      "required": ["trigger", "source", "target", "resolution", "latency_ms"]
+    },
+    "execution": {
+      "type": ["object", "null"],
+      "description": "Present if the action was executed.",
+      "properties": {
+        "success": { "type": "boolean" },
+        "new_record_version": { "type": "integer" },
+        "new_field_versions": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      },
+      "required": ["success", "new_record_version", "new_field_versions"]
+    },
+    "conflict_detail": {
+      "type": ["object", "null"],
+      "description": "Present if needs_retry_conflict.",
+      "properties": {
+        "stale_fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "current_versions": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      },
+      "required": ["stale_fields", "current_versions"]
+    },
+    "audit_ref": {
+      "type": "string",
+      "description": "Reference key into the governance audit log."
+    },
+    "sim_event_ref": {
+      "type": ["integer", "null"],
+      "description": "event_seq of the corresponding event in _events.ndjson."
+    },
+    "enforcement_trace": {
+      "type": "array",
+      "description": "Ordered list of enforcement steps evaluated.",
+      "items": {
+        "type": "object",
+        "required": ["step", "result", "duration_ms"],
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": ["validate", "prohibit", "bound", "freshness", "escalate", "checkpoint", "execute", "audit"]
+          },
+          "result": {
+            "type": "string",
+            "enum": ["pass", "deny", "transform", "escalate", "pending", "conflict", "executed"]
+          },
+          "detail": {
+            "type": ["object", "null"],
+            "description": "Step-specific data."
+          },
+          "duration_ms": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

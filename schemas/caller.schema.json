@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/caller.schema.json",
+  "title": "CallerProfile",
+  "description": "Defines the synthetic caller's identity, behavior, and disclosure rules. Architecture Document Section 2.2.1.",
+  "type": "object",
+  "required": ["version", "profile_id", "profile_name", "identity", "language", "accessibility", "emotional_baseline", "speech", "interaction_style", "instruction_following", "disclosure_policy", "memory_reliability", "opening_style", "example_short_answers"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "profile_id": { "type": "string", "pattern": "^CALLER-" },
+    "profile_name": { "type": "string" },
+    "identity": {
+      "type": "object",
+      "required": ["name", "age", "gender", "pronouns", "phone_number", "home_city"],
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer", "minimum": 1 },
+        "gender": { "type": "string" },
+        "pronouns": { "type": "string" },
+        "phone_number": { "type": "string" },
+        "alt_phone_number": { "type": "string" },
+        "home_city": { "type": "string" }
+      }
+    },
+    "language": {
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": { "type": "string" },
+        "other": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "properties": {
+        "hearing": { "type": "string", "enum": ["none", "partial", "deaf"] },
+        "vision": { "type": "string", "enum": ["none", "partial", "blind"] },
+        "mobility": { "type": "string", "enum": ["independent", "limited", "immobile"] }
+      }
+    },
+    "emotional_baseline": { "type": "string" },
+    "speech": {
+      "type": "object",
+      "required": ["rate", "clarity", "disfluencies"],
+      "properties": {
+        "rate": { "type": "string", "enum": ["Slow", "Moderate", "Fast"] },
+        "clarity": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "disfluencies": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "interaction_style": {
+      "type": "object",
+      "required": ["interrupts_operator", "waits_for_questions", "volunteers_key_facts", "asks_for_confirmation"],
+      "properties": {
+        "interrupts_operator": { "type": "boolean" },
+        "waits_for_questions": { "type": "boolean" },
+        "volunteers_key_facts": { "type": "boolean" },
+        "asks_for_confirmation": { "type": "boolean" }
+      }
+    },
+    "instruction_following": {
+      "type": "object",
+      "required": ["compliance_level", "stays_on_line", "will_meet_responders"],
+      "properties": {
+        "compliance_level": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "stays_on_line": { "type": "boolean" },
+        "will_meet_responders": { "type": "boolean" }
+      }
+    },
+    "disclosure_policy": {
+      "type": "object",
+      "description": "Per-category disclosure timing rules.",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["volunteer", "on_ask_once", "on_ask_twice", "after_reassurance", "refuse"]
+      }
+    },
+    "memory_reliability": {
+      "type": "object",
+      "properties": {
+        "omission_rate": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "contradiction_rate": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "precision_level": { "type": "string", "enum": ["Low", "Medium", "High"] }
+      }
+    },
+    "opening_style": { "type": "string" },
+    "example_short_answers": { "type": "object", "additionalProperties": { "type": "string" } }
+  }
+}

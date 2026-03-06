@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/evidence_ref.schema.json",
+  "title": "EvidenceRef",
+  "description": "A single evidence reference within an ActionProposal. Uses a two-level type system: abstract categories (domain-agnostic) and subtypes (domain-specific). Architecture Document Section 3.3.3.",
+  "type": "object",
+  "required": ["type", "category", "source", "content"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "Domain-specific subtype (e.g., 'transcript_span', 'entity_extract', 'sop_ref', 'location_signal', 'geocoder_lookup'). Must be a recognized subtype in the domain_evidence_config."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["human_communication", "operational_record", "procedural_reference", "sensor_or_signal", "external_source"],
+      "description": "Abstract evidence category (domain-agnostic). Derived from the subtype via domain_evidence_config, or set explicitly by the agent."
+    },
+    "source": {
+      "type": "string",
+      "description": "Identifies the specific source instance (e.g., 'turn:3', 'turn:2-5', 'sop:fire-res-v2', 'ani_ali', 'gps', 'geocoder:v3'). Format depends on subtype."
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Extracted text, value, or reference content. Must be non-empty."
+    },
+    "confidence": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Agent's confidence in the reliability of this evidence (0.0-1.0). Null only for procedural_reference and certain external_source subtypes where the source is authoritative."
+    },
+    "entity_type": {
+      "type": ["string", "null"],
+      "description": "For operational_record subtypes (e.g., entity_extract): the entity category (address, phone_number, person_name, hazard, weapon, etc.). Null for other subtypes."
+    },
+    "lookup_service": {
+      "type": ["string", "null"],
+      "description": "For external_source subtypes: the service identifier (e.g., 'canada_post_api'). Must be an authorized service per Bound constraints. Null for other subtypes."
+    }
+  }
+}

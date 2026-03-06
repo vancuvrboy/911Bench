@@ -1,0 +1,8 @@
+[project]
+name = "911bench"
+version = "0.1.0"
+description = "911Bench governance server enforcement engine and harness"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+include = ["gov_server*", "tests*"]

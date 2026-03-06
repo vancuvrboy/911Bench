@@ -1,0 +1,16 @@
+{
+  "policy_id": "GOV-TEST-MISS-A3",
+  "policy_version": "1.0",
+  "description": "A3 policy without checkpoint or rollback",
+  "action_classes": [
+    {
+      "name": "cad_update.address",
+      "controlling_entity": {"role": "call_taker", "escalation_target": "supervisor"},
+      "autonomy_level": "A3",
+      "operators": {
+        "audit": {"capture": ["input", "output", "decision"]}
+      },
+      "evidence_requirements": {}
+    }
+  ]
+}

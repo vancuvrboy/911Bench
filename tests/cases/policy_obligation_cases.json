@@ -1,0 +1,62 @@
+[
+  {
+    "test_id": "OBLIG-001",
+    "category": "obligation_enforcement",
+    "description": "Missing Audit operator fails validation",
+    "policy_file": "policies/test_policy_missing_audit.yaml",
+    "registry_file": "policies/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "act-oblig-001",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {"location": "123 Main"},
+      "evidence_refs": [{"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "123 Main", "confidence": 0.9}],
+      "uncertainty": {"p_correct": 0.9, "conflict": false},
+      "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+      "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A2"}
+    },
+    "expected": {
+      "policy_error": "missing_audit_operator"
+    }
+  },
+  {
+    "test_id": "OBLIG-002",
+    "category": "obligation_enforcement",
+    "description": "A3 without rollback or checkpoint fails validation",
+    "policy_file": "policies/test_policy_missing_a3_guard.yaml",
+    "registry_file": "policies/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "act-oblig-002",
+      "incident_id": "inc-1",
+      "action_class": "cad_update.address",
+      "proposed_payload": {"location": "123 Main"},
+      "evidence_refs": [{"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "123 Main", "confidence": 0.9}],
+      "uncertainty": {"p_correct": 0.9, "conflict": false},
+      "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+      "proposer": {"agent_id": "911buddy", "agent_role": "dsa", "autonomy_level": "A3"}
+    },
+    "expected": {
+      "policy_error": "missing_rollback_or_checkpoint_for_A3"
+    }
+  },
+  {
+    "test_id": "OBLIG-003",
+    "category": "obligation_enforcement",
+    "description": "A4 without escalate fails validation",
+    "policy_file": "policies/test_policy_missing_a4_escalate.yaml",
+    "registry_file": "policies/test_registry.yaml",
+    "action_proposal": {
+      "action_id": "act-oblig-003",
+      "incident_id": "inc-1",
+      "action_class": "nlp.translate_stream",
+      "proposed_payload": {"source_lang": "en", "target_lang": "fr", "text": "hello"},
+      "evidence_refs": [{"type": "transcript_span", "category": "human_communication", "source": "turn:1", "content": "hello", "confidence": 0.9}],
+      "uncertainty": {"p_correct": 0.9, "conflict": false},
+      "read_set": {"record_version": 0, "field_versions": {}},
+      "proposer": {"agent_id": "translator", "agent_role": "translation", "autonomy_level": "A4"}
+    },
+    "expected": {
+      "policy_error": "missing_escalation_for_A4"
+    }
+  }
+]

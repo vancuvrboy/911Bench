@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/incident.schema.json",
+  "title": "IncidentSeed",
+  "description": "Defines the incident context, ground truth, caller perspective, and time-based progression. Architecture Document Section 2.2.2.",
+  "type": "object",
+  "required": ["version", "id", "type", "sub_type", "location", "time_of_day", "weather", "environment", "caller_view", "progression_by_turn", "first_responder_delay"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "id": { "type": "string", "pattern": "^INC-" },
+    "type": { "type": "string", "enum": ["Fire", "Police", "EMS"] },
+    "sub_type": { "type": "string" },
+    "location": {
+      "type": "object",
+      "required": ["address_line"],
+      "properties": {
+        "address_line": { "type": "string" },
+        "city": { "type": "string" },
+        "cross_streets": { "type": "string" },
+        "landmarks": { "type": "string" }
+      }
+    },
+    "time_of_day": { "type": "string", "enum": ["Morning", "Afternoon", "Evening", "Night"] },
+    "weather": { "type": "string" },
+    "environment": { "type": "string" },
+    "caller_view": {
+      "type": "object",
+      "required": ["vantage_default", "what_is_obvious", "what_is_uncertain", "initial_opening_line"],
+      "properties": {
+        "vantage_default": { "type": "string" },
+        "what_is_obvious": { "type": "array", "items": { "type": "string" } },
+        "what_is_uncertain": { "type": "array", "items": { "type": "string" } },
+        "initial_opening_line": { "type": "string" }
+      }
+    },
+    "sensitive_topics": { "type": "array", "items": { "type": "string" } },
+    "progression_by_turn": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["turn_offset", "note"],
+        "properties": {
+          "turn_offset": { "type": "integer", "minimum": 0 },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "first_responder_delay": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of conversation turns between dispatch and responder arrival."
+    }
+  }
+}

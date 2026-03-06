@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://911bench.ece.ubc.ca/schemas/events.schema.json",
+  "title": "911Bench Event",
+  "description": "Schema for events in _events.ndjson. Each line is one event. Architecture Document Section 2.4.",
+  "type": "object",
+  "required": ["event_type", "ts", "event_seq"],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": ["meta", "system", "conversation", "tool_call", "cad_patch_applied", "checkpoint_decision", "escalation", "episode_end", "governance_correlation", "ng911_message", "qa_score"]
+    },
+    "ts": { "type": "string", "format": "date-time", "description": "Server-assigned ISO-8601 timestamp." },
+    "incident_id": { "type": "string", "description": "Present on all events except meta's initial fields." },
+    "event_seq": { "type": "integer", "minimum": 0, "description": "Monotonic sequence number (0-based)." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "event_type": { "const": "meta" } } },
+      "then": {
+        "required": ["execution_id", "scenario_id", "incident_id", "policy_id", "policy_hash", "schema_version"],
+        "properties": {
+          "execution_id": { "type": "string" },
+          "scenario_id": { "type": "string" },
+          "policy_id": { "type": "string" },
+          "policy_hash": { "type": "string" },
+          "helperFlag": { "type": "boolean" },
+          "humanCTFlag": { "type": "boolean" },
+          "humanCTName": { "type": ["string", "null"] },
+          "caller_profile_id": { "type": "string" },
+          "incident_type": { "type": "string" },
+          "qa_template_id": { "type": "string" },
+          "schema_version": { "type": "string" },
+          "agent_config": {
+            "type": "object",
+            "properties": {
+              "caller_agent": { "$ref": "#/$defs/agent_config_snapshot" },
+              "calltaker_agent": { "$ref": "#/$defs/agent_config_snapshot" },
+              "helper_agent": { "oneOf": [{ "$ref": "#/$defs/agent_config_snapshot" }, { "type": "null" }] },
+              "qa_agent": { "$ref": "#/$defs/agent_config_snapshot" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "system" } } },
+      "then": {
+        "required": ["turn", "subtype", "text"],
+        "properties": {
+          "turn": { "type": "integer" },
+          "subtype": {
+            "type": "string",
+            "enum": ["generic", "responders_arrived", "responders_dispatched", "call_dropped", "callback_attempt", "policy_transition", "max_turns_reached", "parse_error"]
+          },
+          "text": { "type": "string" },
+          "detail": { "type": ["object", "null"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "conversation" } } },
+      "then": {
+        "required": ["turn", "call_taker", "caller"],
+        "properties": {
+          "turn": { "type": "integer", "minimum": 1 },
+          "call_taker": { "type": "string" },
+          "caller": { "type": "string" },
+          "caller_metadata": {
+            "type": ["object", "null"],
+            "properties": {
+              "emotional_state": { "type": "string" },
+              "disclosure_tracker": { "type": "object" },
+              "progression_note": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "tool_call" } } },
+      "then": {
+        "required": ["turn", "tool_call_id", "tool_name", "args", "fields_updated", "field_count", "actor", "new_record_version", "new_field_versions"],
+        "properties": {
+          "turn": { "type": "integer" },
+          "tool_call_id": { "type": "string" },
+          "tool_name": { "type": "string" },
+          "args": { "type": "object" },
+          "fields_updated": { "type": "array", "items": { "type": "string" } },
+          "field_count": { "type": "integer" },
+          "dispatch_triggered": { "type": ["boolean", "null"] },
+          "actor": { "type": "string", "enum": ["call_taker", "supervisor"] },
+          "new_record_version": { "type": "integer" },
+          "new_field_versions": { "type": "object", "additionalProperties": { "type": "integer" } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "cad_patch_applied" } } },
+      "then": {
+        "required": ["action_id", "action_class", "proposer_agent_id", "policy_id", "policy_hash", "payload", "original_payload", "new_record_version", "new_field_versions"],
+        "properties": {
+          "action_id": { "type": "string" },
+          "action_class": { "type": "string" },
+          "proposer_agent_id": { "type": "string" },
+          "policy_id": { "type": "string" },
+          "policy_hash": { "type": "string" },
+          "payload": { "type": "object" },
+          "original_payload": { "type": "object" },
+          "checkpoint_ref": { "type": ["string", "null"] },
+          "checkpoint_decision": { "type": ["string", "null"], "enum": ["approved", "edited_approved", null] },
+          "governance_operators_applied": { "type": "array", "items": { "type": "string" } },
+          "old_values": { "type": "object" },
+          "new_record_version": { "type": "integer" },
+          "new_field_versions": { "type": "object", "additionalProperties": { "type": "integer" } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "checkpoint_decision" } } },
+      "then": {
+        "required": ["request_id", "action_class", "decision", "approver_role", "latency_ms"],
+        "properties": {
+          "request_id": { "type": "string" },
+          "action_class": { "type": "string" },
+          "decision": { "type": "string", "enum": ["approved", "denied", "edited_approved", "deferred_escalated", "timeout"] },
+          "approver_role": { "type": "string" },
+          "edited_payload": { "type": ["object", "null"] },
+          "deferred_to": { "type": ["string", "null"] },
+          "rationale": { "type": ["string", "null"] },
+          "latency_ms": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "escalation" } } },
+      "then": {
+        "required": ["action_id", "action_class", "source", "trigger", "target", "resolved"],
+        "properties": {
+          "action_id": { "type": "string" },
+          "action_class": { "type": "string" },
+          "source": { "type": "string", "enum": ["bound", "checkpoint_deferred", "explicit_rule"] },
+          "trigger": { "type": "string" },
+          "target": { "type": "string" },
+          "resolved": { "type": "boolean" },
+          "resolution": { "type": ["string", "null"], "enum": ["approved", "denied", "edited_approved", "re_escalated", "timeout", null] },
+          "edited_payload": { "type": ["object", "null"] },
+          "re_escalated_to": { "type": ["string", "null"] },
+          "escalation_depth": { "type": "integer", "minimum": 1 },
+          "latency_ms": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "episode_end" } } },
+      "then": {
+        "required": ["reason", "total_turns", "total_events", "final_record_version", "final_cad_state", "duration_ms"],
+        "properties": {
+          "reason": { "type": "string" },
+          "total_turns": { "type": "integer" },
+          "total_events": { "type": "integer" },
+          "final_record_version": { "type": "integer" },
+          "final_cad_state": { "type": "object" },
+          "duration_ms": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "governance_correlation" } } },
+      "then": {
+        "required": ["action_id", "matched_rule_ids", "policy_id"],
+        "properties": {
+          "action_id": { "type": "string" },
+          "matched_rule_ids": { "type": "array", "items": { "type": "string" } },
+          "policy_id": { "type": "string" },
+          "evaluation_trace": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["step", "result"],
+              "properties": {
+                "step": { "type": "string" },
+                "result": { "type": "string" },
+                "detail": { "type": ["object", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "qa_score" } } },
+      "then": {
+        "required": ["evaluator_agent_id", "qa_template_id", "incident_type", "sections_applied", "items", "total_points_awarded", "total_points_possible", "normalized_score"],
+        "properties": {
+          "evaluator_agent_id": { "type": "string" },
+          "qa_template_id": { "type": "string" },
+          "incident_type": { "type": "string" },
+          "sections_applied": { "type": "array", "items": { "type": "string" } },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "answer", "points_awarded", "points_possible", "rationale", "evidence_turns"],
+              "properties": {
+                "id": { "type": "string" },
+                "answer": { "type": "string", "enum": ["YES", "NO", "REFUSED", "NA"] },
+                "points_awarded": { "type": "number", "minimum": 0 },
+                "points_possible": { "type": "number", "minimum": 0 },
+                "rationale": { "type": "string" },
+                "evidence_turns": { "type": "array", "items": { "type": "integer" } }
+              }
+            }
+          },
+          "total_points_awarded": { "type": "number" },
+          "total_points_possible": { "type": "number" },
+          "normalized_score": { "type": "number", "minimum": 0, "maximum": 100 },
+          "evaluator_model": { "type": "string" },
+          "evaluator_prompt_hash": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "agent_config_snapshot": {
+      "type": "object",
+      "required": ["model", "temperature", "prompt_hash"],
+      "properties": {
+        "model": { "type": "string" },
+        "temperature": { "type": "number" },
+        "prompt_hash": { "type": "string", "description": "SHA-256 of the system prompt file." }
+      }
+    }
+  }
+}

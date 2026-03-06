@@ -1,0 +1,36 @@
+{
+  "domain": "ecc",
+  "version": "1.0",
+  "subtypes": [
+    {
+      "name": "transcript_span",
+      "category": "human_communication",
+      "required_fields": ["source", "content", "confidence"],
+      "validation_function": "validate_transcript_span"
+    },
+    {
+      "name": "entity_extract",
+      "category": "operational_record",
+      "required_fields": ["source", "content", "entity_type", "confidence"],
+      "validation_function": "validate_entity_extract"
+    },
+    {
+      "name": "sop_ref",
+      "category": "procedural_reference",
+      "required_fields": ["source", "content"],
+      "validation_function": "validate_sop_ref"
+    },
+    {
+      "name": "location_signal",
+      "category": "sensor_or_signal",
+      "required_fields": ["source", "content", "confidence"],
+      "validation_function": "validate_location_signal"
+    },
+    {
+      "name": "external_lookup",
+      "category": "external_source",
+      "required_fields": ["source", "content", "lookup_service", "confidence"],
+      "validation_function": "validate_external_lookup"
+    }
+  ]
+}
