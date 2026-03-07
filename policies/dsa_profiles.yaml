@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "default_profile_id": "deterministic_911buddy_v1",
+  "profiles": [
+    {
+      "id": "deterministic_911buddy_v1",
+      "provider": "builtin",
+      "model": "rule-based",
+      "mode": "deterministic",
+      "enabled": true,
+      "description": "Deterministic 911Buddy baseline for reproducible research runs.",
+      "action_classes": [],
+      "runtime": {"temperature": 0.0, "seed": 1}
+    },
+    {
+      "id": "openai_911buddy_v1",
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "mode": "model",
+      "enabled": false,
+      "description": "OpenAI-backed 911Buddy profile (disabled by default).",
+      "action_classes": [],
+      "runtime": {"temperature": 0.2, "max_tokens": 400}
+    }
+  ],
+  "routing": {
+    "cad_update.address": {
+      "strategy": "fallback_chain",
+      "profiles": ["deterministic_911buddy_v1", "openai_911buddy_v1"]
+    },
+    "cad_update.priority": {
+      "strategy": "parallel_best",
+      "profiles": ["deterministic_911buddy_v1"]
+    }
+  }
+}

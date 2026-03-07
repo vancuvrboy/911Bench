@@ -26,6 +26,7 @@ python3 -m gov_server \
   --registry-file registries/test_registry.yaml \
   --evidence-config-file policies/domain_evidence_config.yaml \
   --auth-config-file policies/agent_auth_config.json \
+  --dsa-config-file policies/dsa_profiles.yaml \
   --proposals-per-sec 10 \
   --sim-base-url http://127.0.0.1:8300 \
   --southbound-timeout-sec 10 \
@@ -74,6 +75,7 @@ Northbound routes implemented (Section 3.2):
 - `POST /mcp/get_context_since`
 - `GET /mcp/subscribe_context` (SSE, bounded stream duration)
 - `GET /mcp/list_action_classes`
+- `GET /mcp/list_dsa_profiles`
 - `GET /mcp/get_action_schema`
 - `GET /mcp/get_audit_ref`
 - `POST /mcp/swap_policy` (hot-swap hook)
@@ -139,3 +141,14 @@ JWT mode notes:
 Version compatibility:
 - Supported policy major versions are currently `1.x`.
 - Policy swap to unsupported major versions is rejected with `422 incompatible_policy_version`.
+
+DSA registry:
+- DSA profile registry is configured via `policies/dsa_profiles.yaml` by default.
+- `GET /mcp/list_dsa_profiles` returns default profile, available profiles, and optional selection for an `action_class`.
+- `propose_action` accepts optional `dsa` block:
+  - `profile_id`: requested DSA profile
+  - `apply_suggested_payload`: if `true`, apply selected DSA suggestion before enforcement
+  - response includes `dsa` provenance (`profile_id`, `context_hash`, `suggestions`, `chosen_payload_source`)
+- routing strategies:
+  - `fallback_chain`: try profiles in order until one succeeds
+  - `parallel_best` (research mode): evaluate multiple profiles and pick highest-score suggestion

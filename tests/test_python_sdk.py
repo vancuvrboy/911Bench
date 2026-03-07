@@ -39,6 +39,8 @@ class PythonSDKIntegrationTest(unittest.TestCase):
     def test_happy_path(self) -> None:
         caps = self.client.capabilities()
         self.assertEqual(caps["protocol"], "mcp-http-sse")
+        dsa_profiles = self.client.list_dsa_profiles(action_class="cad_update.address")
+        self.assertEqual(dsa_profiles["default_profile_id"], "deterministic_911buddy_v1")
 
         _ = self.client.seed_context(
             incident_id="inc-sdk-1",
@@ -80,6 +82,8 @@ class PythonSDKIntegrationTest(unittest.TestCase):
             }
         )
         self.assertIn(outcome["decision"], {"executed", "denied", "needs_retry_conflict"})
+        self.assertIn("dsa", outcome)
+        self.assertEqual(outcome["dsa"]["profile_id"], "deterministic_911buddy_v1")
         audit = self.client.get_audit_ref("sdk-act-001")
         self.assertEqual(audit["action_id"], "sdk-act-001")
 

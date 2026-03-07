@@ -14,6 +14,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError
 
+from gov_server.dsa import DSAProfile, DSARegistry
 from gov_server.mcp_server import MCPHTTPServer
 from gov_server.service import GovernanceConfig, GovernanceService
 
@@ -152,10 +153,17 @@ class MCPServerIntegrationTest(unittest.TestCase):
         self.assertEqual(outcome["action_id"], "mcp-act-001")
         self.assertIn(outcome["decision"], {"executed", "denied", "needs_retry_conflict"})
         self.assertTrue(outcome["audit_ref"])
+        self.assertIn("dsa", outcome)
+        self.assertEqual(outcome["dsa"]["profile_id"], "deterministic_911buddy_v1")
+        self.assertEqual(outcome["dsa"]["chosen_payload_source"], "client_proposal")
 
         audit = self._get("/mcp/get_audit_ref", {"action_id": "mcp-act-001"})
         self.assertEqual(audit["action_id"], "mcp-act-001")
         self.assertIn("audit_entry", audit)
+        self.assertEqual(
+            audit["audit_entry"]["proposal"]["proposer"]["dsa_profile_id"],
+            "deterministic_911buddy_v1",
+        )
 
         delta = self._post(
             "/mcp/get_context_since",
@@ -216,6 +224,141 @@ class MCPServerIntegrationTest(unittest.TestCase):
         self.assertEqual(envelope["tool"], "get_context_snapshot")
         self.assertIn("result", envelope)
         self.assertEqual(envelope["result"]["incident_id"], "inc-mcp-envelope")
+
+    def test_list_dsa_profiles(self) -> None:
+        profiles = self._get("/mcp/list_dsa_profiles")
+        self.assertEqual(profiles["default_profile_id"], "deterministic_911buddy_v1")
+        ids = {item["id"] for item in profiles["profiles"]}
+        self.assertIn("deterministic_911buddy_v1", ids)
+
+        selected = self._get(
+            "/mcp/list_dsa_profiles",
+            {
+                "action_class": "cad_update.address",
+                "requested_profile_id": "openai_911buddy_v1",
+            },
+        )
+        self.assertEqual(selected["selected_profile_id"], "deterministic_911buddy_v1")
+        self.assertIn("deterministic_911buddy_v1", selected["allowed_profile_ids"])
+        self.assertEqual(selected["strategy"], "fallback_chain")
+
+    def test_dsa_can_apply_suggested_payload(self) -> None:
+        _ = self._post(
+            "/mcp/admin/seed_context",
+            {
+                "incident_id": "inc-mcp-dsa-apply",
+                "transcript": [{"turn": 1, "text": "Caller: There is a fire at 500 Smoke Ave"}],
+                "cad_view": {"location": "Unknown"},
+                "location": {"ani_ali": "500 Smoke Ave"},
+                "sop_refs": ["fire-res-v2"],
+            },
+        )
+        proposal = {
+            "action_id": "mcp-dsa-apply-1",
+            "incident_id": "inc-mcp-dsa-apply",
+            "action_class": "cad_update.address",
+            "proposed_payload": {"location": "", "city": "Vancouver"},
+            "evidence_refs": [
+                {
+                    "type": "transcript_span",
+                    "category": "human_communication",
+                    "source": "turn:1",
+                    "content": "There is a fire at 500 Smoke Ave",
+                    "confidence": 0.95,
+                }
+            ],
+            "uncertainty": {"p_correct": 0.95, "conflict": False},
+            "read_set": {"record_version": 0, "field_versions": {"location": 0, "city": 0}},
+            "proposer": {
+                "agent_id": "911buddy",
+                "agent_secret": "dev-911buddy-secret",
+                "agent_role": "dsa",
+                "autonomy_level": "A3",
+            },
+            "dsa": {
+                "profile_id": "deterministic_911buddy_v1",
+                "apply_suggested_payload": True,
+            },
+        }
+        outcome = self._post("/mcp/propose_action", proposal)
+        self.assertEqual(outcome["decision"], "executed")
+        self.assertEqual(outcome["dsa"]["chosen_payload_source"], "dsa_suggestion")
+        self.assertTrue(str(outcome["dsa"]["chosen_payload"].get("location", "")))
+
+    def test_dsa_fallback_chain_uses_next_profile_on_error(self) -> None:
+        original = self.service.dsa_registry
+        try:
+            self.service.dsa_registry = DSARegistry(
+                default_profile_id="broken_profile",
+                profiles=(
+                    DSAProfile(
+                        id="broken_profile",
+                        provider="broken",
+                        model="n/a",
+                        mode="model",
+                        enabled=True,
+                        description="always fails",
+                        action_classes=(),
+                        runtime={},
+                    ),
+                    DSAProfile(
+                        id="deterministic_911buddy_v1",
+                        provider="builtin",
+                        model="rule-based",
+                        mode="deterministic",
+                        enabled=True,
+                        description="deterministic fallback",
+                        action_classes=(),
+                        runtime={},
+                    ),
+                ),
+                routing_by_action_class={
+                    "cad_update.address": {
+                        "strategy": "fallback_chain",
+                        "profiles": ["broken_profile", "deterministic_911buddy_v1"],
+                    }
+                },
+            )
+            _ = self._post(
+                "/mcp/admin/seed_context",
+                {
+                    "incident_id": "inc-mcp-dsa-fallback",
+                    "transcript": [{"turn": 1, "text": "Caller: 700 Fallback St"}],
+                    "cad_view": {"location": "Unknown"},
+                    "location": {"ani_ali": "700 Fallback St"},
+                    "sop_refs": ["fire-res-v2"],
+                },
+            )
+            proposal = {
+                "action_id": "mcp-dsa-fallback-1",
+                "incident_id": "inc-mcp-dsa-fallback",
+                "action_class": "cad_update.address",
+                "proposed_payload": {"location": "700 Fallback St", "city": "Vancouver"},
+                "evidence_refs": [
+                    {
+                        "type": "transcript_span",
+                        "category": "human_communication",
+                        "source": "turn:1",
+                        "content": "700 Fallback St",
+                        "confidence": 0.95,
+                    }
+                ],
+                "uncertainty": {"p_correct": 0.95, "conflict": False},
+                "read_set": {"record_version": 0, "field_versions": {"location": 0, "city": 0}},
+                "proposer": {
+                    "agent_id": "911buddy",
+                    "agent_secret": "dev-911buddy-secret",
+                    "agent_role": "dsa",
+                    "autonomy_level": "A3",
+                },
+                "dsa": {"apply_suggested_payload": False},
+            }
+            outcome = self._post("/mcp/propose_action", proposal)
+            self.assertEqual(outcome["decision"], "executed")
+            self.assertEqual(outcome["dsa"]["selected_profile_id"], "deterministic_911buddy_v1")
+            self.assertEqual(outcome["dsa"]["attempts"][0]["status"], "error")
+        finally:
+            self.service.dsa_registry = original
 
     def test_mcp_rpc_envelope(self) -> None:
         rpc_caps = self._post(

@@ -168,6 +168,14 @@ class MCPHandler(BaseHTTPRequestHandler):
                 agent_secret=query.get("agent_secret", [None])[0],
                 agent_token=token,
             )
+        if path == "/mcp/list_dsa_profiles":
+            include_disabled_raw = str(query.get("include_disabled", ["false"])[0] or "false").lower()
+            include_disabled = include_disabled_raw in {"1", "true", "yes"}
+            return HTTPStatus.OK, svc.list_dsa_profiles(
+                action_class=query.get("action_class", [None])[0],
+                requested_profile_id=query.get("requested_profile_id", [None])[0],
+                include_disabled=include_disabled,
+            )
         if path == "/mcp/admin/metrics":
             return HTTPStatus.OK, svc.get_metrics_snapshot()
         if path == "/mcp/admin/events":
@@ -436,6 +444,7 @@ class MCPHandler(BaseHTTPRequestHandler):
                     "tools_call": "/mcp/tools/call",
                     "rpc": "/mcp/rpc",
                     "subscribe_context": "/mcp/subscribe_context",
+                    "list_dsa_profiles": "/mcp/list_dsa_profiles",
                     "admin_metrics": "/mcp/admin/metrics",
                     "admin_events": "/mcp/admin/events",
                     "admin_event_stream": "/mcp/admin/events/stream",
@@ -572,6 +581,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--registry-file", default="registries/test_registry.yaml")
     parser.add_argument("--evidence-config-file", default="policies/domain_evidence_config.yaml")
     parser.add_argument("--auth-config-file", default="policies/agent_auth_config.json")
+    parser.add_argument("--dsa-config-file", default="policies/dsa_profiles.yaml")
     parser.add_argument("--proposals-per-sec", type=int, default=10)
     parser.add_argument("--checkpoint-queue-cap", type=int, default=20)
     parser.add_argument("--escalation-queue-cap", type=int, default=5)
@@ -600,6 +610,7 @@ def run_server(argv: list[str] | None = None) -> int:
         registry_file=args.registry_file,
         evidence_config_file=args.evidence_config_file,
         auth_config_file=args.auth_config_file,
+        dsa_config_file=args.dsa_config_file,
         proposals_per_sec=args.proposals_per_sec,
         checkpoint_queue_cap=args.checkpoint_queue_cap,
         escalation_queue_cap=args.escalation_queue_cap,

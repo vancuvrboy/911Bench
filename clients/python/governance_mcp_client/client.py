@@ -76,6 +76,19 @@ class GovernanceMCPClient:
             query["agent_secret"] = agent_secret
         return self._get_json("/mcp/list_action_classes", query=query)
 
+    def list_dsa_profiles(
+        self,
+        action_class: str | None = None,
+        requested_profile_id: str | None = None,
+        include_disabled: bool = False,
+    ) -> JSONObject:
+        query: JSONObject = {"include_disabled": str(bool(include_disabled)).lower()}
+        if action_class is not None:
+            query["action_class"] = action_class
+        if requested_profile_id is not None:
+            query["requested_profile_id"] = requested_profile_id
+        return self._get_json("/mcp/list_dsa_profiles", query=query)
+
     def get_action_schema(self, action_class: str) -> JSONObject:
         return self._get_json("/mcp/get_action_schema", query={"action_class": action_class})
 

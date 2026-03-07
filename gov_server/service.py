@@ -20,6 +20,8 @@ from .auth import (
     RateLimitedError,
 )
 from .context_cache import ContextCache
+from .dsa import DSARegistry, load_dsa_registry
+from .dsa_runtime import DSAAdvice, DSAExecutionError, DSAOrchestrator
 from .enforcement import Engine
 from .observability import Observability
 from .policy_loader import PolicyBundle, PolicyLoader
@@ -42,6 +44,7 @@ class GovernanceConfig:
     registry_file: str
     evidence_config_file: str
     auth_config_file: str | None = None
+    dsa_config_file: str | None = "policies/dsa_profiles.yaml"
     proposals_per_sec: int = 10
     checkpoint_queue_cap: int = 20
     escalation_queue_cap: int = 5
@@ -79,6 +82,9 @@ class GovernanceService:
         self.auth = AgentAuthManager(
             self.root_dir / config.auth_config_file if config.auth_config_file else None
         )
+        dsa_path = self.root_dir / config.dsa_config_file if config.dsa_config_file else None
+        self.dsa_registry: DSARegistry = load_dsa_registry(dsa_path)
+        self._dsa_runtime = DSAOrchestrator()
         self.rate_limiter = ProposalRateLimiter(proposals_per_sec=config.proposals_per_sec)
         self.queue_caps = QueueCaps(
             checkpoint_cap=config.checkpoint_queue_cap,
@@ -124,6 +130,7 @@ class GovernanceService:
             policy_id=self.bundle.policy.get("policy_id"),
             policy_version=self.bundle.policy.get("policy_version"),
             auth_mode=getattr(self.auth, "mode", "dev_secret"),
+            dsa_default_profile=self.dsa_registry.default_profile_id,
             southbound_enabled=bool(config.sim_base_url),
             persistence_enabled=bool(config.state_db_file),
         )
@@ -215,13 +222,24 @@ class GovernanceService:
                 incident_id=incident_id,
                 agent_id=proposer.get("agent_id", "unknown"),
             )
+            proposal_for_engine = copy.deepcopy(proposal)
+            dsa_advice = self._run_dsa_advice(proposal_for_engine, snapshot)
             transcript_turns = [turn.get("turn", 0) for turn in snapshot.get("transcript", [])]
             context_for_engine = {
                 "transcript_turns": transcript_turns or [1, 2, 3, 4, 5],
                 "sop_ids": snapshot.get("sop_refs", []) or ["fire-res-v2"],
             }
 
-            outcome = engine.propose_action(copy.deepcopy(proposal), context_snapshot=context_for_engine)
+            outcome = engine.propose_action(proposal_for_engine, context_snapshot=context_for_engine)
+            if dsa_advice is not None:
+                envelope = dsa_advice.to_json()
+                dsa_meta = proposal_for_engine.get("dsa", {})
+                if isinstance(dsa_meta, dict):
+                    envelope["strategy"] = dsa_meta.get("strategy")
+                    envelope["attempts"] = dsa_meta.get("attempts", [])
+                    envelope["requested_profile_id"] = dsa_meta.get("requested_profile_id")
+                    envelope["selected_profile_id"] = dsa_meta.get("selected_profile_id")
+                outcome["dsa"] = envelope
             action_id = str(outcome.get("action_id", ""))
             audit_ref = str(outcome.get("audit_ref", ""))
             chain_ref: JSONObject | None = None
@@ -252,6 +270,7 @@ class GovernanceService:
                     "denial_reason": outcome.get("denial_reason"),
                     "audit_ref": audit_ref,
                     "policy_id": self.bundle.policy.get("policy_id"),
+                    "dsa_profile_id": (dsa_advice.profile_id if dsa_advice else None),
                 }
             )
 
@@ -276,6 +295,7 @@ class GovernanceService:
                 action_id=action_id,
                 decision=outcome.get("decision"),
                 denial_reason=outcome.get("denial_reason"),
+                dsa_profile_id=(dsa_advice.profile_id if dsa_advice else None),
             )
             return outcome
         finally:
@@ -358,6 +378,103 @@ class GovernanceService:
                 }
             )
         return {"classes": classes}
+
+    def list_dsa_profiles(
+        self,
+        action_class: str | None = None,
+        requested_profile_id: str | None = None,
+        include_disabled: bool = False,
+    ) -> JSONObject:
+        selected: str | None = None
+        allowed_ids: list[str] = []
+        strategy = "fallback_chain"
+        if action_class:
+            route = self.dsa_registry.route_for_action_class(action_class)
+            strategy = str(route.get("strategy", "fallback_chain"))
+            allowed_ids = self.dsa_registry.allowed_profile_ids_for_action_class(action_class)
+            chosen = self.dsa_registry.select_profile(action_class=action_class, requested_profile_id=requested_profile_id)
+            selected = chosen.id if chosen is not None else None
+        return {
+            "default_profile_id": self.dsa_registry.default_profile_id,
+            "profiles": self.dsa_registry.list_profiles(include_disabled=include_disabled),
+            "action_class": action_class,
+            "strategy": strategy,
+            "allowed_profile_ids": allowed_ids,
+            "requested_profile_id": requested_profile_id,
+            "selected_profile_id": selected,
+        }
+
+    def _run_dsa_advice(self, proposal: JSONObject, context_snapshot: JSONObject) -> DSAAdvice | None:
+        action_class = str(proposal.get("action_class", ""))
+        if not action_class:
+            return None
+        dsa_request = proposal.get("dsa", {})
+        requested_profile_id: str | None = None
+        apply_suggestion = False
+        if isinstance(dsa_request, dict):
+            requested_profile_id = str(dsa_request.get("profile_id", "")).strip() or None
+            apply_suggestion = bool(dsa_request.get("apply_suggested_payload", False))
+        route = self.dsa_registry.route_for_action_class(action_class)
+        strategy = str(route.get("strategy", "fallback_chain") or "fallback_chain")
+        candidate_ids = self.dsa_registry.allowed_profile_ids_for_action_class(action_class)
+        if not candidate_ids:
+            return None
+        if requested_profile_id and requested_profile_id in candidate_ids:
+            candidate_ids = [requested_profile_id] + [pid for pid in candidate_ids if pid != requested_profile_id]
+
+        attempts: list[JSONObject] = []
+        successful: list[DSAAdvice] = []
+        for profile_id in candidate_ids:
+            profile = self.dsa_registry.profile_by_id(profile_id)
+            if profile is None:
+                attempts.append({"profile_id": profile_id, "status": "error", "error": "unknown_profile"})
+                continue
+            if not profile.enabled:
+                attempts.append({"profile_id": profile_id, "status": "skipped", "error": "profile_disabled"})
+                continue
+            try:
+                advice = self._dsa_runtime.advise(
+                    profile=profile,
+                    proposal=proposal,
+                    context_snapshot=context_snapshot,
+                    apply_suggestion=apply_suggestion,
+                )
+            except DSAExecutionError as exc:
+                attempts.append({"profile_id": profile_id, "status": "error", "error": str(exc)})
+                if strategy == "fallback_chain":
+                    continue
+            else:
+                attempts.append({"profile_id": profile_id, "status": "ok"})
+                successful.append(advice)
+                if strategy == "fallback_chain":
+                    break
+        if not successful:
+            proposal["dsa"] = {
+                "requested_profile_id": requested_profile_id,
+                "selected_profile_id": None,
+                "apply_suggested_payload": apply_suggestion,
+                "strategy": strategy,
+                "attempts": attempts,
+                "chosen_payload_source": "client_proposal",
+            }
+            return None
+
+        advice = max(successful, key=lambda row: row.selection_score) if strategy == "parallel_best" else successful[0]
+        proposal.setdefault("proposer", {})
+        if isinstance(proposal["proposer"], dict):
+            proposal["proposer"]["dsa_profile_id"] = advice.profile_id
+        proposal["dsa"] = {
+            "requested_profile_id": requested_profile_id,
+            "selected_profile_id": advice.profile_id,
+            "apply_suggested_payload": apply_suggestion,
+            "strategy": strategy,
+            "attempts": attempts,
+            "context_hash": advice.context_hash,
+            "proposal_hash": advice.proposal_hash,
+            "chosen_payload_source": advice.chosen_payload_source,
+        }
+        proposal["proposed_payload"] = copy.deepcopy(advice.chosen_payload)
+        return advice
 
     def get_action_schema(self, action_class: str) -> JSONObject:
         registry = self.bundle.registry_by_action_class.get(action_class)
