@@ -24,6 +24,7 @@ class AppState:
     engine: SimulationEngine
     auto_approve_checkpoints: bool = True
     route_counts: dict[str, int] | None = None
+    checkpoint_poll_mode: str = "normal"
 
 
 class SouthboundHandler(BaseHTTPRequestHandler):
@@ -52,6 +53,7 @@ class SouthboundHandler(BaseHTTPRequestHandler):
                 "/admin/post_turn": self._admin_post_turn,
                 "/admin/events": self._admin_events,
                 "/admin/stats": self._admin_stats,
+                "/admin/config": self._admin_config,
                 "/plant/get_state_snapshot": lambda body: self.app.engine.plant_get_state_snapshot(
                     incident_id=str(body.get("incident_id", ""))
                 ),
@@ -62,8 +64,18 @@ class SouthboundHandler(BaseHTTPRequestHandler):
                 "/plant/apply_cad_patch": self._plant_apply_patch,
                 "/plant/emit_event": self._plant_emit_event_safe,
                 "/checkpoint/request": self._checkpoint_request,
-                "/checkpoint/poll": lambda body: self.app.engine.checkpoint_poll(
-                    request_id=str(body.get("request_id", ""))
+                "/checkpoint/poll": self._checkpoint_poll,
+                "/checkpoint/list": lambda body: self.app.engine.checkpoint_list(
+                    incident_id=str(body.get("incident_id", "")),
+                    status_filter=(str(body.get("status_filter")) if body.get("status_filter") is not None else None),
+                    role_filter=(str(body.get("role_filter")) if body.get("role_filter") is not None else None),
+                ),
+                "/checkpoint/submit": lambda body: self.app.engine.checkpoint_submit(
+                    request_id=str(body.get("request_id", "")),
+                    decision=str(body.get("decision", "")),
+                    edited_payload=body.get("edited_payload") if isinstance(body.get("edited_payload"), dict) else None,
+                    re_escalate_to=(str(body.get("re_escalate_to")) if body.get("re_escalate_to") else None),
+                    rationale=(str(body.get("rationale")) if body.get("rationale") else None),
                 ),
             }
             handler = routes.get(parsed.path)
@@ -120,11 +132,24 @@ class SouthboundHandler(BaseHTTPRequestHandler):
         return {"incident_id": incident_id, "events": events, "count": len(events)}
 
     def _admin_stats(self, payload: JSONObject) -> JSONObject:
-        return {"route_counts": dict(self.app.route_counts or {})}
+        return {
+            "route_counts": dict(self.app.route_counts or {}),
+            "checkpoint_poll_mode": self.app.checkpoint_poll_mode,
+        }
+
+    def _admin_config(self, payload: JSONObject) -> JSONObject:
+        mode = str(payload.get("checkpoint_poll_mode", self.app.checkpoint_poll_mode) or "normal")
+        if mode not in {"normal", "force_timeout"}:
+            raise SimError("invalid_config", f"unsupported checkpoint_poll_mode:{mode}")
+        self.app.checkpoint_poll_mode = mode
+        return {"checkpoint_poll_mode": self.app.checkpoint_poll_mode}
 
     def _checkpoint_request(self, payload: JSONObject) -> JSONObject:
         incident_id = str(payload.get("incident_id", ""))
-        response = self.app.engine.checkpoint_request(incident_id=incident_id, request=payload)
+        request_body = payload.get("request", payload)
+        if not isinstance(request_body, dict):
+            request_body = {}
+        response = self.app.engine.checkpoint_request(incident_id=incident_id, request=request_body)
         if self.app.auto_approve_checkpoints:
             self.app.engine.checkpoint_submit(
                 request_id=response["request_id"],
@@ -132,6 +157,13 @@ class SouthboundHandler(BaseHTTPRequestHandler):
                 rationale="auto_approved_by_phase3_southbound_server",
             )
         return response
+
+    def _checkpoint_poll(self, payload: JSONObject) -> JSONObject:
+        request_id = str(payload.get("request_id", ""))
+        poll = self.app.engine.checkpoint_poll(request_id=request_id)
+        if self.app.checkpoint_poll_mode == "force_timeout" and str(poll.get("status", "")) == "pending":
+            return {"status": "timeout", "response": {"latency_ms": 0, "rationale": "forced_timeout"}}
+        return poll
 
     def _plant_apply_patch(self, payload: JSONObject) -> JSONObject:
         return self.app.engine.plant_apply_cad_patch(
@@ -195,6 +227,7 @@ def run_server() -> None:
         engine=SimulationEngine(execution_id=args.execution_id),
         auto_approve_checkpoints=bool(args.auto_approve_checkpoints),
         route_counts={},
+        checkpoint_poll_mode="normal",
     )
     httpd = ThreadingHTTPServer((args.host, int(args.port)), SouthboundHandler)
     httpd.app_state = app_state  # type: ignore[attr-defined]

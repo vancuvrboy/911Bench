@@ -57,3 +57,9 @@ Phase 3 INT southbound block (`INT-001..INT-006`):
 ```bash
 python3 -m tests.harness.phase3_int --root . --output tests/results/phase3_int_report.json
 ```
+
+Phase 3 INT checkpoint block (`INT-010..INT-015`):
+
+```bash
+python3 -m tests.harness.phase3_checkpoint_int --root . --output tests/results/phase3_checkpoint_int_report.json
+```
