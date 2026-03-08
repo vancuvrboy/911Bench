@@ -63,3 +63,9 @@ Phase 3 INT checkpoint block (`INT-010..INT-015`):
 ```bash
 python3 -m tests.harness.phase3_checkpoint_int --root . --output tests/results/phase3_checkpoint_int_report.json
 ```
+
+Phase 4 end-to-end pipeline block (`PIPE-001..PIPE-044` subset implemented in harness report):
+
+```bash
+python3 -m tests.harness.phase4_pipeline --root . --output-dir tests/results
+```

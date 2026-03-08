@@ -51,6 +51,7 @@ class SouthboundHandler(BaseHTTPRequestHandler):
             routes: dict[str, Callable[[JSONObject], JSONObject]] = {
                 "/admin/load_start": self._admin_load_start,
                 "/admin/post_turn": self._admin_post_turn,
+                "/admin/end_call": self._admin_end_call,
                 "/admin/events": self._admin_events,
                 "/admin/stats": self._admin_stats,
                 "/admin/config": self._admin_config,
@@ -96,9 +97,13 @@ class SouthboundHandler(BaseHTTPRequestHandler):
         caller_fixture = str(payload.get("caller_fixture", "fixtures/caller_cooperative_calm.json"))
         incident_fixture = str(payload.get("incident_fixture", "fixtures/incident_fire_residential.json"))
         qa_fixture = str(payload.get("qa_fixture", "fixtures/qaTemplate_003.json"))
+        max_turns = payload.get("max_turns")
 
         caller = load_json(root / caller_fixture)
         incident = load_json(root / incident_fixture)
+        if max_turns is not None:
+            incident = dict(incident)
+            incident["max_turns"] = int(max_turns)
         qa = load_json(root / qa_fixture)
 
         loaded = self.app.engine.admin_load_scenario(
@@ -125,6 +130,12 @@ class SouthboundHandler(BaseHTTPRequestHandler):
             cad_updates=cad_updates,
         )
         return {"caller": caller, "call_taker": calltaker}
+
+    def _admin_end_call(self, payload: JSONObject) -> JSONObject:
+        incident_id = str(payload.get("incident_id", ""))
+        reason = str(payload.get("reason", "other"))
+        reason_detail = str(payload.get("reason_detail", "")) or None
+        return self.app.engine.calltaker_end_call(incident_id=incident_id, reason=reason, reason_detail=reason_detail)
 
     def _admin_events(self, payload: JSONObject) -> JSONObject:
         incident_id = str(payload.get("incident_id", ""))
