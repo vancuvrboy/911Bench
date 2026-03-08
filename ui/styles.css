@@ -92,6 +92,19 @@ body {
   flex-wrap: wrap;
 }
 
+.action textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.action .row-inline input {
+  flex: 1 1 280px;
+}
+
+.action .row-inline select {
+  min-width: 200px;
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -215,6 +228,54 @@ button:hover {
   background: linear-gradient(180deg, #e5901f, #c26600);
 }
 
+.system-messages {
+  margin-top: 0.75rem;
+  border-top: 1px solid #d5deeb;
+  padding-top: 0.6rem;
+}
+
+.system-messages h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.system-messages-list {
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid #d7e1ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.35rem;
+}
+
+.system-message {
+  border-left: 4px solid #7f93b2;
+  padding: 0.35rem 0.45rem;
+  background: #f6f9ff;
+  border-radius: 6px;
+  margin-bottom: 0.35rem;
+}
+
+.system-message:last-child {
+  margin-bottom: 0;
+}
+
+.system-message.arrived {
+  border-left-color: var(--accent-2);
+  background: #ecfbf5;
+}
+
+.system-message.dispatched {
+  border-left-color: var(--accent);
+  background: #ebf2ff;
+}
+
+.system-message .meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -231,4 +292,3 @@ button:hover {
     grid-template-columns: 1fr;
   }
 }
-

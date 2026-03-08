@@ -20,6 +20,8 @@ let state = { loaded: false };
 let agentCatalog = [];
 let liveSource = null;
 let lastTranscriptSig = "";
+let autoLoopTimer = null;
+let autoLoopBusy = false;
 
 function $(id) {
   return document.getElementById(id);
@@ -147,6 +149,39 @@ function renderSop(snippets) {
   });
 }
 
+function renderSystemMessages(data) {
+  const root = $("systemMessagesView");
+  if (!root) return;
+  const calltakerId = data.agent_profiles?.calltaker || $("calltakerAgentId").value;
+  const calltakerProfile = profileFor("calltaker", calltakerId);
+  const isManualCallTaker = calltakerProfile && calltakerProfile.mode === "manual";
+  const events = (data.system_events || []).filter((ev) => ev && ev.event_type === "system");
+
+  if (!isManualCallTaker) {
+    root.innerHTML = "<div class='meta'>Select manual Call-Taker to view live system notifications here.</div>";
+    return;
+  }
+  if (events.length === 0) {
+    root.innerHTML = "<div class='meta'>No system messages yet.</div>";
+    return;
+  }
+
+  root.innerHTML = "";
+  events.slice(-12).forEach((ev) => {
+    const subtype = String(ev.subtype || "generic");
+    const row = document.createElement("div");
+    let cls = "system-message";
+    if (subtype === "responders_arrived") cls += " arrived";
+    if (subtype === "responders_dispatched") cls += " dispatched";
+    row.className = cls;
+    row.innerHTML = `
+      <div class="meta">Turn ${Number(ev.turn || 0)} · ${escapeHtml(subtype)}</div>
+      <div>${escapeHtml(String(ev.text || ""))}</div>
+    `;
+    root.appendChild(row);
+  });
+}
+
 function render(data) {
   state = data;
   $("metricsView").textContent = pretty({
@@ -170,6 +205,7 @@ function render(data) {
     field_versions: data.field_versions || {},
   });
   renderTranscript(data);
+  renderSystemMessages(data);
   renderInbox("checkpointInbox", data.checkpoint_inbox || [], false);
   renderInbox("escalationInbox", data.escalation_inbox || [], true);
   if (data.last_qa_score) {
@@ -209,6 +245,7 @@ function openLiveStream() {
 
 async function setupEpisode() {
   try {
+    stopAutoLoop();
     const callerAgentId = $("callerAgentId").value;
     const calltakerAgentId = $("calltakerAgentId").value;
     const qaAgentId = $("qaAgentId").value;
@@ -232,10 +269,63 @@ async function setupEpisode() {
       const replayOut = await api.post("/api/agent/auto_step", { turns: 1 });
       $("setupStatus").textContent = `Loaded ${out.loaded.incident_id}; replay advanced ${replayOut.executed_turns} turn`;
       await refresh();
+      return;
+    }
+    if (shouldAutoLoop(callerAgentId, calltakerAgentId)) {
+      $("setupStatus").textContent = `Loaded ${out.loaded.incident_id}. Auto-run started.`;
+      startAutoLoop();
     }
   } catch (err) {
     $("setupStatus").textContent = err.message;
   }
+}
+
+function profileFor(role, id) {
+  return agentCatalog.find((p) => p.role === role && p.id === id) || null;
+}
+
+function shouldAutoLoop(callerAgentId, calltakerAgentId) {
+  const caller = profileFor("caller", callerAgentId);
+  const calltaker = profileFor("calltaker", calltakerAgentId);
+  if (!caller || !calltaker) return false;
+  return caller.mode === "callable" && calltaker.mode === "callable";
+}
+
+function stopAutoLoop() {
+  if (autoLoopTimer) {
+    clearTimeout(autoLoopTimer);
+    autoLoopTimer = null;
+  }
+}
+
+async function autoLoopTick() {
+  if (autoLoopBusy || !state.loaded) return;
+  autoLoopBusy = true;
+  try {
+    const out = await api.post("/api/agent/auto_step", { turns: 1 });
+    await refresh();
+    if (String(out.phase || "") === "sealed") {
+      $("setupStatus").textContent = "Episode sealed.";
+      stopAutoLoop();
+      return;
+    }
+    if (Number(out.executed_turns || 0) <= 0) {
+      $("setupStatus").textContent = "Auto-run paused (no executable turn).";
+      stopAutoLoop();
+      return;
+    }
+    autoLoopTimer = setTimeout(autoLoopTick, 250);
+  } catch (err) {
+    $("setupStatus").textContent = `Auto-run error: ${err.message}`;
+    stopAutoLoop();
+  } finally {
+    autoLoopBusy = false;
+  }
+}
+
+function startAutoLoop() {
+  stopAutoLoop();
+  autoLoopTimer = setTimeout(autoLoopTick, 150);
 }
 
 function renderAgentSelect(selectId, role, selectedId) {
@@ -246,7 +336,8 @@ function renderAgentSelect(selectId, role, selectedId) {
   options.forEach((p) => {
     const opt = document.createElement("option");
     opt.value = p.id;
-    opt.textContent = `${p.id} (${p.provider})`;
+    const desc = p.description ? ` - ${p.description}` : "";
+    opt.textContent = `${p.id} (${p.provider})${desc}`;
     if (p.id === selectedId) opt.selected = true;
     select.appendChild(opt);
   });
@@ -297,6 +388,7 @@ async function postCallTaker() {
 
 async function endCall() {
   try {
+    stopAutoLoop();
     await api.post("/api/end_call", {
       reason: $("endReason").value,
       reason_detail: $("endReasonDetail").value || null,

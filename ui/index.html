@@ -122,7 +122,7 @@
         <button id="callerSendBtn">Post Caller Turn</button>
 
         <label>Call-Taker Text</label>
-        <textarea id="ctText" rows="2"></textarea>
+        <textarea id="ctText" rows="3"></textarea>
         <label>CAD Updates JSON</label>
         <textarea id="ctCadJson" rows="4">{}</textarea>
         <button id="ctSendBtn">Post Call-Taker Turn</button>
@@ -136,6 +136,11 @@
           </select>
           <input id="endReasonDetail" placeholder="optional reason detail" />
           <button id="endCallBtn">End Call</button>
+        </div>
+
+        <div class="system-messages">
+          <h3>System Messages (Manual Call-Taker)</h3>
+          <div id="systemMessagesView" class="system-messages-list"></div>
         </div>
       </section>
 
