@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "id": "INC-POL-1001",
+  "type": "Police",
+  "sub_type": "Domestic Disturbance",
+  "location": {
+    "address_line": "100 Granville",
+    "city": "Vancouver",
+    "cross_streets": "Granville & Davie",
+    "landmarks": "Apartment tower"
+  },
+  "time_of_day": "Night",
+  "weather": "Rain",
+  "environment": "Downtown",
+  "caller_view": {
+    "vantage_default": "Hallway",
+    "what_is_obvious": ["Yelling"],
+    "what_is_uncertain": ["Weapons"],
+    "initial_opening_line": "There is fighting next door"
+  },
+  "sensitive_topics": ["domestic violence"],
+  "progression_by_turn": [{"turn_offset": 2, "note": "Louder shouting"}],
+  "first_responder_delay": 5
+}

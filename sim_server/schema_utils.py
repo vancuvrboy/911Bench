@@ -101,6 +101,11 @@ def validate_event_against_schema_like_rules(event: dict[str, Any]) -> list[str]
     for req in required_by_type.get(event_type, []):
         if req not in event:
             errors.append(f"missing:{req}")
+    if event_type == "conversation" and isinstance(event.get("caller_metadata"), dict):
+        allowed_meta_keys = {"agent_profile_id", "source", "response_id", "fallback", "error_code"}
+        for key in event["caller_metadata"].keys():
+            if key not in allowed_meta_keys:
+                errors.append(f"caller_metadata_unknown:{key}")
     return errors
 
 

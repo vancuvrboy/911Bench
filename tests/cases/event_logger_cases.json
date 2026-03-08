@@ -1,0 +1,322 @@
+[
+  {
+    "test_id": "EVNT-001",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "hello"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "hi"
+      },
+      {
+        "action": "emit_event",
+        "event": {
+          "event_type": "governance_correlation",
+          "action_id": "a1",
+          "matched_rule_ids": [
+            "r1"
+          ],
+          "policy_id": "p1",
+          "evaluation_trace": []
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-002",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-003",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "emit_event",
+        "event": {
+          "event_type": "governance_correlation",
+          "action_id": "a3",
+          "matched_rule_ids": [
+            "r"
+          ],
+          "policy_id": "p"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-004",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-005",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "episode_end"
+      ]
+    }
+  },
+  {
+    "test_id": "EVNT-006",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-007",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b",
+        "cad_updates": {
+          "location": "Z"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-008",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "e8",
+        "payload": {
+          "location": "L"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "cad_patch_applied"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-009",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "emit_event",
+        "event": {
+          "event_type": "governance_correlation",
+          "action_id": "ev9",
+          "matched_rule_ids": [
+            "x"
+          ],
+          "policy_id": "p"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "EVNT-010",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "emit_event",
+        "event": {}
+      }
+    ],
+    "expected": {
+      "error_contains": "event missing event_type"
+    }
+  },
+  {
+    "test_id": "EVNT-011",
+    "category": "event_logger",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  }
+]

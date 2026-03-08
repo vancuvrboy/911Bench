@@ -1,0 +1,140 @@
+[
+  {
+    "caller_text": "There is fighting next door",
+    "caller_metadata": {
+      "emotional_state": "concerned",
+      "disclosure_tracker": {
+        "name": false,
+        "callback_number": false,
+        "current_location": false,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": false
+      },
+      "progression_note": null
+    },
+    "calltaker_text": "911, what is your emergency?",
+    "cad_updates": {},
+    "end_call": false,
+    "end_reason": null
+  },
+  {
+    "caller_text": "um My name is Jamie Lee. My callback is +1-604-555-0112. I am at 100 Granville. Louder shouting",
+    "caller_metadata": {
+      "emotional_state": "concerned",
+      "disclosure_tracker": {
+        "name": true,
+        "callback_number": true,
+        "current_location": true,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": false
+      },
+      "progression_note": "Louder shouting"
+    },
+    "calltaker_text": "Please confirm your exact location and nearest cross street.",
+    "cad_updates": {
+      "location": "100 Granville",
+      "incident_type": "Police",
+      "dispatch_triggered": true,
+      "priority": "high"
+    },
+    "end_call": false,
+    "end_reason": null
+  },
+  {
+    "caller_text": "I understand. I am staying on the line.",
+    "caller_metadata": {
+      "emotional_state": "concerned",
+      "disclosure_tracker": {
+        "name": true,
+        "callback_number": true,
+        "current_location": true,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": false
+      },
+      "progression_note": null
+    },
+    "calltaker_text": "Are there weapons involved and is anyone currently in immediate danger?",
+    "cad_updates": {},
+    "end_call": false,
+    "end_reason": null
+  },
+  {
+    "caller_text": "um I do not see weapons, but there is a hazard.",
+    "caller_metadata": {
+      "emotional_state": "concerned",
+      "disclosure_tracker": {
+        "name": true,
+        "callback_number": true,
+        "current_location": true,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": true
+      },
+      "progression_note": null
+    },
+    "calltaker_text": "Are there weapons involved and is anyone currently in immediate danger?",
+    "cad_updates": {},
+    "end_call": false,
+    "end_reason": null
+  },
+  {
+    "caller_text": "I understand. I am staying on the line.",
+    "caller_metadata": {
+      "emotional_state": "concerned",
+      "disclosure_tracker": {
+        "name": true,
+        "callback_number": true,
+        "current_location": true,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": true
+      },
+      "progression_note": null
+    },
+    "calltaker_text": "Stay on the line and keep me updated.",
+    "cad_updates": {},
+    "end_call": false,
+    "end_reason": null
+  },
+  {
+    "caller_text": "um I understand. I am staying on the line.",
+    "caller_metadata": {
+      "emotional_state": "concerned",
+      "disclosure_tracker": {
+        "name": true,
+        "callback_number": true,
+        "current_location": true,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": true
+      },
+      "progression_note": null
+    },
+    "calltaker_text": "Stay on the line and keep me updated.",
+    "cad_updates": {},
+    "end_call": false,
+    "end_reason": null
+  },
+  {
+    "caller_text": "Okay, I can see responders now. Thank you.",
+    "caller_metadata": {
+      "emotional_state": "relieved",
+      "disclosure_tracker": {
+        "name": true,
+        "callback_number": true,
+        "current_location": true,
+        "relationship_to_incident": false,
+        "people_involved": false,
+        "hazards_or_weapons": true
+      },
+      "progression_note": null
+    },
+    "calltaker_text": "Responders are now with you. We are ending this call.",
+    "cad_updates": {},
+    "end_call": true,
+    "end_reason": "responders_arrived"
+  }
+]

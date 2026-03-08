@@ -1,0 +1,108 @@
+[
+  {
+    "test_id": "SEED-001",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true
+    }
+  },
+  {
+    "test_id": "SEED-002",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario",
+        "caller_json": "fixtures/caller_missing_name.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "identity.name"
+    }
+  },
+  {
+    "test_id": "SEED-003",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_invalid_type.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "invalid type enum"
+    }
+  },
+  {
+    "test_id": "SEED-004",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_negative_delay.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "must be >= 0"
+    }
+  },
+  {
+    "test_id": "SEED-005",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario",
+        "caller_json": "fixtures/caller_invalid_disclosure.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "disclosure_policy"
+    }
+  },
+  {
+    "test_id": "SEED-006",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario",
+        "qa_template_json": "fixtures/qaTemplate_missing_common.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "COMMON"
+    }
+  },
+  {
+    "test_id": "SEED-007",
+    "category": "seed_validation",
+    "script": [
+      {
+        "action": "load_scenario",
+        "caller_json": "fixtures/caller_cooperative_calm.json",
+        "incident_json": "fixtures/incident_fire_residential.json",
+        "qa_template_json": "fixtures/qaTemplate_003.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true
+    }
+  }
+]

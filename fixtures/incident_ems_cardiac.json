@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "id": "INC-EMS-2001",
+  "type": "EMS",
+  "sub_type": "Cardiac Arrest",
+  "location": {
+    "address_line": "500 Broadway",
+    "city": "Vancouver",
+    "cross_streets": "Broadway & Cambie",
+    "landmarks": "Coffee shop"
+  },
+  "time_of_day": "Morning",
+  "weather": "Cloudy",
+  "environment": "Commercial",
+  "caller_view": {
+    "vantage_default": "Inside store",
+    "what_is_obvious": ["Patient collapsed"],
+    "what_is_uncertain": ["Pulse"],
+    "initial_opening_line": "Someone collapsed"
+  },
+  "sensitive_topics": [],
+  "progression_by_turn": [{"turn_offset": 1, "note": "No breathing"}],
+  "first_responder_delay": 6
+}

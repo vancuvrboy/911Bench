@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "id": "INC-MAX-5",
+  "type": "Police",
+  "sub_type": "Noise Complaint",
+  "location": {
+    "address_line": "300 King Street",
+    "city": "Richmond",
+    "cross_streets": "King & 3rd",
+    "landmarks": "Town square"
+  },
+  "time_of_day": "Night",
+  "weather": "Clear",
+  "environment": "Urban",
+  "caller_view": {
+    "vantage_default": "Window",
+    "what_is_obvious": ["Loud noise"],
+    "what_is_uncertain": ["Cause"],
+    "initial_opening_line": "Very loud party"
+  },
+  "sensitive_topics": [],
+  "progression_by_turn": [],
+  "first_responder_delay": 3,
+  "max_turns": 5
+}

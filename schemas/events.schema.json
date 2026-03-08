@@ -69,10 +69,13 @@
           "caller_metadata": {
             "type": ["object", "null"],
             "properties": {
-              "emotional_state": { "type": "string" },
-              "disclosure_tracker": { "type": "object" },
-              "progression_note": { "type": ["string", "null"] }
-            }
+              "agent_profile_id": { "type": "string" },
+              "source": { "type": "string" },
+              "response_id": { "type": "string" },
+              "fallback": { "type": "boolean" },
+              "error_code": { "type": "string" }
+            },
+            "additionalProperties": false
           }
         }
       }
@@ -226,10 +229,15 @@
       "type": "object",
       "required": ["model", "temperature", "prompt_hash"],
       "properties": {
+        "profile_id": { "type": "string" },
+        "provider": { "type": "string" },
+        "mode": { "type": "string" },
         "model": { "type": "string" },
         "temperature": { "type": "number" },
-        "prompt_hash": { "type": "string", "description": "SHA-256 of the system prompt file." }
-      }
+        "prompt_hash": { "type": "string", "description": "SHA-256 of the system prompt file." },
+        "config_sha256": { "type": "string" }
+      },
+      "additionalProperties": false
     }
   }
 }

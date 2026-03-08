@@ -1,0 +1,274 @@
+[
+  {
+    "test_id": "LIFE-001",
+    "category": "episode_lifecycle",
+    "deterministic": true,
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "There is a fire at 2421 Main!"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Confirming 2421 Main.",
+        "cad_updates": {
+          "location": "2421 Main Street"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true,
+      "event_count_min": 4,
+      "event_types_present": [
+        "meta",
+        "conversation",
+        "episode_end"
+      ],
+      "final_cad_state": {
+        "location": "2421 Main Street"
+      },
+      "final_record_version_min": 1,
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "LIFE-002",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario",
+        "caller_json": "fixtures/caller_missing_name.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "identity.name"
+    }
+  },
+  {
+    "test_id": "LIFE-003",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_invalid_type.json"
+      }
+    ],
+    "expected": {
+      "error_contains": "invalid type enum"
+    }
+  },
+  {
+    "test_id": "LIFE-004",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "start_episode"
+      }
+    ],
+    "expected": {
+      "error_contains": "incident_id not found"
+    }
+  },
+  {
+    "test_id": "LIFE-005",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "start_episode"
+      }
+    ],
+    "expected": {
+      "error_contains": "already running"
+    }
+  },
+  {
+    "test_id": "LIFE-006",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Hello"
+      }
+    ],
+    "expected": {
+      "error_contains": "not in running state"
+    }
+  },
+  {
+    "test_id": "LIFE-007",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "l7",
+        "payload": {
+          "priority": "high"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        }
+      }
+    ],
+    "expected": {
+      "error_contains": "episode is sealed"
+    }
+  },
+  {
+    "test_id": "LIFE-008",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      },
+      {
+        "action": "emit_event",
+        "event": {
+          "event_type": "governance_correlation",
+          "action_id": "x",
+          "matched_rule_ids": [
+            "r"
+          ],
+          "policy_id": "p"
+        }
+      }
+    ],
+    "expected": {
+      "error_contains": "episode is sealed"
+    }
+  },
+  {
+    "test_id": "LIFE-009",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "artifact_get",
+        "name": "_events.ndjson"
+      }
+    ],
+    "expected": {
+      "error_contains": "not yet sealed"
+    }
+  },
+  {
+    "test_id": "LIFE-010",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      },
+      {
+        "action": "artifact_get",
+        "name": "_events.ndjson"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true,
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "LIFE-011",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "meta",
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "LIFE-012",
+    "category": "episode_lifecycle",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "t"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "u"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  }
+]

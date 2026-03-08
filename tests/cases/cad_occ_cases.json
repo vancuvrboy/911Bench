@@ -1,0 +1,388 @@
+[
+  {
+    "test_id": "CAD-001",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_record_version_min": 0,
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CAD-002",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Need help"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Location?",
+        "cad_updates": {
+          "location": "2421 Main Street"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_record_version_min": 1,
+      "final_cad_state": {
+        "location": "2421 Main Street"
+      }
+    }
+  },
+  {
+    "test_id": "CAD-003",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "t1"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "ct1",
+        "cad_updates": {
+          "location": "A"
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "t2"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "ct2",
+        "cad_updates": {
+          "priority": "high"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_record_version_min": 2
+    }
+  },
+  {
+    "test_id": "CAD-004",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "a1",
+        "action_class": "cad_update.address",
+        "payload": {
+          "location": "100 Granville"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "location": "100 Granville"
+      },
+      "final_record_version_min": 1
+    }
+  },
+  {
+    "test_id": "CAD-005",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "a1",
+        "payload": {
+          "location": "X"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "a2",
+        "payload": {
+          "location": "Y"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "location": "X"
+      }
+    }
+  },
+  {
+    "test_id": "CAD-006",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "c61",
+        "payload": {
+          "location": "A"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "c62",
+        "payload": {
+          "priority": "high"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CAD-007",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "c71",
+        "payload": {
+          "location": "A"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "c72",
+        "payload": {
+          "priority": "low"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CAD-008",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "c81",
+        "payload": {
+          "priority": "high"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "cad_patch_applied"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CAD-009",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "c91",
+        "payload": {
+          "location": "123 Any"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "state_snapshot"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "location": "123 Any"
+      }
+    }
+  },
+  {
+    "test_id": "CAD-010",
+    "category": "cad_occ",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "a1",
+        "payload": {
+          "remarks_notes": "alpha"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "remarks_notes": 0
+          }
+        }
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "a2",
+        "payload": {
+          "remarks_notes": "beta"
+        },
+        "read_set": {
+          "record_version": 1,
+          "field_versions": {
+            "remarks_notes": 1
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "remarks_notes": "alpha\nbeta"
+      }
+    }
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "profile_id": "CALLER-BAD-DISC",
+  "identity": {
+    "name": "Bad Disclosure",
+    "age": 40,
+    "gender": "Female",
+    "pronouns": "she/her",
+    "phone_number": "+1-604-555-0999",
+    "alt_phone_number": "",
+    "home_city": "Vancouver"
+  },
+  "disclosure_policy": {
+    "name": "maybe_later"
+  }
+}

@@ -1,0 +1,5 @@
+model: gpt-4o-mini
+temperature: 0.0
+system_prompt: |
+  You are a 911 call-taker.
+  Return strict JSON with keys: text (str), cad_updates (object), end_call (bool), end_reason (str|null).

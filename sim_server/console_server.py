@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import mimetypes
-from dataclasses import dataclass
+import time
+import uuid
+import hashlib
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -19,6 +23,7 @@ from agents import (
     create_calltaker_agent,
     create_caller_agent,
     create_qa_agent,
+    get_profile,
     is_manual,
     is_replay,
     list_profiles,
@@ -44,6 +49,11 @@ class ConsoleState:
     caller_agent: CallerAgent | None = None
     calltaker_agent: CallTakerAgent | None = None
     qa_agent: QAEvaluatorAgent | None = None
+    agent_config_root: Path | None = None
+    artifacts_root: Path | None = None
+    run_id: str = ""
+    auto_save_on_end: bool = True
+    saved_artifacts: list[dict[str, Any]] = field(default_factory=list)
     replay_steps: list[dict[str, Any]] | None = None
     replay_idx: int = 0
     last_qa_score: dict[str, Any] | None = None
@@ -55,6 +65,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
     @property
     def app(self) -> ConsoleState:
         return self.server.app_state  # type: ignore[attr-defined]
+
+    def handle(self) -> None:  # noqa: D401
+        # EventSource clients may disconnect during long-lived SSE reads.
+        # Treat connection resets as normal teardown instead of noisy traceback.
+        try:
+            super().handle()
+        except ConnectionResetError:
+            return
 
     def do_GET(self) -> None:  # noqa: N802
         try:
@@ -102,6 +120,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 rows = [t for t in rows if search in str(t.get("caller", "")).lower() or search in str(t.get("call_taker", "")).lower()]
             self._send_json({"turns": rows})
             return
+        if path == "/api/events/stream":
+            self._handle_sse_stream(query)
+            return
         if path == "/api/sop":
             incident_type = (query.get("incident_type", ["Fire"])[0] or "Fire").title()
             step = (query.get("step", ["initial"])[0] or "initial").lower()
@@ -109,6 +130,63 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             self._log_sop_retrieval(incident_type, step)
             return
         self._send_json({"error": "not_found"}, status=HTTPStatus.NOT_FOUND)
+
+    def _state_signature(self, data: dict[str, Any]) -> tuple[Any, ...]:
+        metrics = data.get("metrics", {}) if isinstance(data.get("metrics"), dict) else {}
+        return (
+            bool(data.get("loaded")),
+            str(data.get("incident_id", "")),
+            str(data.get("phase", "")),
+            int(data.get("record_version", 0) or 0),
+            int(metrics.get("event_count", 0) or 0),
+            int(data.get("pending_turn", 0) or 0),
+            str(data.get("pending_caller_text", "")),
+            len(data.get("checkpoint_inbox", []) or []),
+            len(data.get("escalation_inbox", []) or []),
+        )
+
+    def _sse_write(self, event_name: str, payload: dict[str, Any]) -> None:
+        blob = json.dumps(payload, ensure_ascii=True)
+        self.wfile.write(f"event: {event_name}\n".encode("utf-8"))
+        self.wfile.write(f"data: {blob}\n\n".encode("utf-8"))
+        self.wfile.flush()
+
+    def _handle_sse_stream(self, query: dict[str, list[str]]) -> None:
+        requested_incident = (query.get("incident_id", [""])[0] or "").strip()
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+
+        last_sig: tuple[Any, ...] | None = None
+        heartbeat_counter = 0
+        while True:
+            if self.app.incident_id and (not requested_incident or requested_incident == self.app.incident_id):
+                data = self._state_payload()
+            else:
+                data = {
+                    "loaded": bool(self.app.incident_id),
+                    "incident_id": self.app.incident_id,
+                    "phase": None,
+                    "metrics": {"event_count": 0},
+                    "checkpoint_inbox": [],
+                    "escalation_inbox": [],
+                }
+            sig = self._state_signature(data)
+            try:
+                if sig != last_sig:
+                    self._sse_write("state", {"state": data})
+                    last_sig = sig
+                else:
+                    heartbeat_counter += 1
+                    if heartbeat_counter % 15 == 0:
+                        self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+                time.sleep(0.35)
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
     def _handle_api_post(self, path: str, payload: dict[str, Any]) -> None:
         if path == "/api/admin/load_start":
@@ -128,12 +206,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             cad_updates = payload.get("cad_updates", {})
             if not isinstance(cad_updates, dict):
                 cad_updates = {}
-            self._prime_caller_for_manual_calltaker(incident_id)
+            call_taker_text = str(payload.get("text", ""))
+            # Prime caller against the current manual call-taker utterance so
+            # caller/call-taker remain interleaved on the same turn.
+            self._prime_caller_for_manual_calltaker(incident_id, call_taker_text=call_taker_text)
             out = self.app.engine.calltaker_post_turn(
                 incident_id=incident_id,
-                text=str(payload.get("text", "")),
+                text=call_taker_text,
                 cad_updates=cad_updates,
             )
+            self._maybe_autosave_sealed(incident_id, reason="calltaker_turn")
             self._send_json(out)
             return
         if path == "/api/end_call":
@@ -142,6 +224,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 reason=str(payload.get("reason", "other")),
                 reason_detail=str(payload.get("reason_detail", "")) or None,
             )
+            self._maybe_autosave_sealed(incident_id, reason="end_call")
             self._send_json(out)
             return
         if path == "/api/checkpoint/request":
@@ -160,10 +243,19 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/agent/auto_step":
             out = self._api_agent_auto_step(turns=int(payload.get("turns", 1)))
+            self._maybe_autosave_sealed(incident_id, reason="auto_step")
             self._send_json(out)
             return
         if path == "/api/qa/evaluate":
             out = self._api_qa_evaluate()
+            self._send_json(out)
+            return
+        if path == "/api/artifacts/save":
+            out = self._api_artifacts_save(payload)
+            self._send_json(out)
+            return
+        if path == "/api/artifacts/list":
+            out = self._api_artifacts_list(payload)
             self._send_json(out)
             return
 
@@ -171,7 +263,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
     def _api_load_start(self, payload: dict[str, Any]) -> None:
         root = self.app.root
-        scenario_id = str(payload.get("scenario_id", "ui_session"))
+        requested_scenario = str(payload.get("scenario_id", "")).strip()
+        scenario_id = requested_scenario or f"scenario_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         caller_fixture = str(payload.get("caller_fixture", "fixtures/caller_cooperative_calm.json"))
         incident_fixture = str(payload.get("incident_fixture", "fixtures/incident_fire_residential.json"))
         qa_fixture = str(payload.get("qa_fixture", "fixtures/qaTemplate_003.json"))
@@ -185,6 +278,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         qa = load_json(root / qa_fixture)
         incident = json.loads(json.dumps(incident))
         incident["max_turns"] = max_turns
+        event_agent_config = self._event_agent_config_snapshot(
+            caller_agent_id=caller_agent_id,
+            calltaker_agent_id=calltaker_agent_id,
+            qa_agent_id=qa_agent_id,
+        )
 
         self.app.engine = SimulationEngine(execution_id=f"console-{scenario_id}")
         loaded = self.app.engine.admin_load_scenario(
@@ -193,6 +291,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             incident_json=incident,
             qa_template_id=str(qa.get("version", "003")),
             qa_template_json=qa,
+            agent_config_snapshot=event_agent_config,
         )
         started = self.app.engine.episode_start(loaded["incident_id"])
         self.app.incident_id = loaded["incident_id"]
@@ -203,13 +302,36 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.caller_agent_id = caller_agent_id
         self.app.calltaker_agent_id = calltaker_agent_id
         self.app.qa_agent_id = qa_agent_id
-        self.app.caller_agent = create_caller_agent(caller_agent_id, caller_json=caller, incident_json=incident)
-        self.app.calltaker_agent = create_calltaker_agent(calltaker_agent_id, incident_json=incident, dispatch_enabled=True)
-        self.app.qa_agent = create_qa_agent(qa_agent_id, qa_template_json=qa)
+        self.app.caller_agent = create_caller_agent(
+            caller_agent_id,
+            caller_json=caller,
+            incident_json=incident,
+            config_root=self.app.agent_config_root,
+        )
+        self.app.calltaker_agent = create_calltaker_agent(
+            calltaker_agent_id,
+            incident_json=incident,
+            dispatch_enabled=True,
+            config_root=self.app.agent_config_root,
+        )
+        self.app.qa_agent = create_qa_agent(
+            qa_agent_id,
+            qa_template_json=qa,
+            config_root=self.app.agent_config_root,
+        )
+        if self.app.saved_artifacts is None:
+            self.app.saved_artifacts = []
         self.app.replay_steps = self._load_replay_for_console(scenario_id, incident)
         self.app.replay_idx = 0
         self.app.last_qa_score = None
-        self._send_json({"loaded": loaded, "started": started})
+        self._send_json(
+            {
+                "loaded": loaded,
+                "started": started,
+                "scenario_id": scenario_id,
+                "scenario_id_generated": bool(not requested_scenario),
+            }
+        )
 
     def _incident_or_400(self) -> str:
         if not self.app.incident_id:
@@ -272,6 +394,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 "event_count": len(events),
             },
             "last_qa_score": self.app.last_qa_score,
+            "artifacts": {
+                "run_id": self.app.run_id,
+                "auto_save_on_end": bool(self.app.auto_save_on_end),
+                "saved_count": len(self.app.saved_artifacts or []),
+                "last_saved": (self.app.saved_artifacts[-1] if self.app.saved_artifacts else None),
+            },
         }
 
     def _api_agent_auto_step(self, turns: int = 1) -> dict[str, Any]:
@@ -366,6 +494,214 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.last_qa_score = qa_score
         return {"status": "ok", "qa_score": qa_score}
 
+    def _agent_config_manifest(self) -> dict[str, Any]:
+        manifest: dict[str, Any] = {}
+        root = self.app.agent_config_root
+        if root is None:
+            return manifest
+        role_to_profile = {
+            "caller": self.app.caller_agent_id,
+            "calltaker": self.app.calltaker_agent_id,
+            "qa": self.app.qa_agent_id,
+        }
+        for role, profile_id in role_to_profile.items():
+            path = root / f"{role}.{profile_id}.yaml"
+            if not path.exists():
+                continue
+            raw = path.read_bytes()
+            manifest[role] = {
+                "profile_id": profile_id,
+                "config_file": str(path),
+                "config_sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        return manifest
+
+    def _event_agent_config_snapshot(self, caller_agent_id: str, calltaker_agent_id: str, qa_agent_id: str) -> dict[str, Any]:
+        return {
+            "caller_agent": self._event_agent_entry(role="caller", profile_id=caller_agent_id),
+            "calltaker_agent": self._event_agent_entry(role="calltaker", profile_id=calltaker_agent_id),
+            "helper_agent": None,
+            "qa_agent": self._event_agent_entry(role="qa", profile_id=qa_agent_id),
+        }
+
+    def _event_agent_entry(self, role: str, profile_id: str) -> dict[str, Any]:
+        profile = get_profile(role, profile_id)
+        cfg = self._load_agent_yaml_for_profile(role=role, profile_id=profile_id)
+        system_prompt = cfg.get("system_prompt")
+        prompt_hash = "none"
+        if isinstance(system_prompt, str) and system_prompt.strip():
+            prompt_hash = hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
+        entry: dict[str, Any] = {
+            "profile_id": profile.id,
+            "provider": profile.provider,
+            "mode": profile.mode,
+            "model": str(cfg.get("model", profile.model)),
+            "temperature": float(cfg.get("temperature", profile.temperature)),
+            "prompt_hash": prompt_hash,
+        }
+        config_path = (self.app.agent_config_root or Path(".")) / f"{role}.{profile_id}.yaml"
+        if config_path.exists():
+            entry["config_sha256"] = hashlib.sha256(config_path.read_bytes()).hexdigest()
+        return entry
+
+    def _load_agent_yaml_for_profile(self, role: str, profile_id: str) -> dict[str, Any]:
+        root = self.app.agent_config_root
+        if root is None:
+            return {}
+        path = root / f"{role}.{profile_id}.yaml"
+        if not path.exists():
+            return {}
+        try:
+            import yaml  # type: ignore
+        except Exception:
+            return {}
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+
+    def _artifact_extra_meta(self, incident_id: str) -> dict[str, Any]:
+        return {
+            "console_runtime": {
+                "run_id": self.app.run_id,
+                "auto_save_on_end": bool(self.app.auto_save_on_end),
+                "agent_profiles": {
+                    "caller": self.app.caller_agent_id,
+                    "calltaker": self.app.calltaker_agent_id,
+                    "qa": self.app.qa_agent_id,
+                },
+                "agent_config": self._agent_config_manifest(),
+            },
+            "fixture_refs": {
+                "incident_id": incident_id,
+            },
+        }
+
+    def _save_current_episode_artifacts(self, incident_id: str, reason: str) -> dict[str, Any]:
+        if self.app.artifacts_root is None:
+            raise SimError("artifacts_root_unset", "artifact root is not configured")
+        self._ensure_run_documents()
+        saved = self.app.engine.save_artifact_bundle(
+            incident_id=incident_id,
+            output_root=self.app.artifacts_root,
+            run_id=self.app.run_id,
+            qa_score=self.app.last_qa_score,
+            extra_meta=self._artifact_extra_meta(incident_id) | {"save_reason": reason},
+        )
+        if self.app.saved_artifacts is None:
+            self.app.saved_artifacts = []
+        self.app.saved_artifacts.append(saved)
+        self._rebuild_run_index()
+        return saved
+
+    def _maybe_autosave_sealed(self, incident_id: str, reason: str) -> None:
+        if not self.app.auto_save_on_end:
+            return
+        phase = self.app.engine.plant_get_state_snapshot(incident_id).get("episode_phase")
+        if phase != "sealed":
+            return
+        if self.app.saved_artifacts and self.app.saved_artifacts[-1].get("incident_id") == incident_id:
+            return
+        self._save_current_episode_artifacts(incident_id=incident_id, reason=reason)
+
+    def _api_artifacts_save(self, payload: dict[str, Any]) -> dict[str, Any]:
+        incident_id = str(payload.get("incident_id", "")).strip() or self._incident_or_400()
+        reason = str(payload.get("reason", "manual_export"))
+        return {"status": "saved", "artifact": self._save_current_episode_artifacts(incident_id=incident_id, reason=reason)}
+
+    def _api_artifacts_list(self, payload: dict[str, Any]) -> dict[str, Any]:
+        run_id = str(payload.get("run_id", "")).strip() or self.app.run_id
+        root = self.app.artifacts_root or (self.app.root / "runs")
+        run_root = root / run_id
+        self._ensure_run_documents(run_root=run_root, run_id=run_id)
+        self._rebuild_run_index(run_root=run_root)
+        rows: list[dict[str, Any]] = []
+        if run_root.exists():
+            for meta_path in sorted(run_root.rglob("meta.json")):
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                rows.append(
+                    {
+                        "episode_dir": str(meta_path.parent),
+                        "scenario_id": meta.get("scenario_id"),
+                        "incident_id": meta.get("incident_id"),
+                        "end_ts": meta.get("end_ts"),
+                    }
+                )
+        return {"run_id": run_id, "root": str(run_root), "episodes": rows}
+
+    def _ensure_run_documents(self, run_root: Path | None = None, run_id: str | None = None) -> None:
+        root = run_root or ((self.app.artifacts_root or (self.app.root / "runs")) / (run_id or self.app.run_id))
+        resolved_run_id = run_id or self.app.run_id
+        root.mkdir(parents=True, exist_ok=True)
+
+        manifest_path = root / "run_manifest.json"
+        if not manifest_path.exists():
+            manifest = {
+                "run_id": resolved_run_id,
+                "created_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "created_by": "sim_server.console_server",
+                "root": str(root),
+            }
+            manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+        batch_config_path = root / "batch_config.json"
+        if not batch_config_path.exists():
+            config = {
+                "run_id": resolved_run_id,
+                "artifacts_root": str(self.app.artifacts_root or (self.app.root / "runs")),
+                "auto_save_on_end": bool(self.app.auto_save_on_end),
+                "agent_profiles": {
+                    "caller": self.app.caller_agent_id,
+                    "calltaker": self.app.calltaker_agent_id,
+                    "qa": self.app.qa_agent_id,
+                },
+                "agent_config_manifest": self._agent_config_manifest(),
+            }
+            batch_config_path.write_text(json.dumps(config, indent=2, sort_keys=True), encoding="utf-8")
+
+    def _rebuild_run_index(self, run_root: Path | None = None) -> None:
+        root = run_root or ((self.app.artifacts_root or (self.app.root / "runs")) / self.app.run_id)
+        if not root.exists():
+            return
+
+        rows: list[dict[str, Any]] = []
+        for meta_path in sorted(root.rglob("meta.json")):
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            qa_score_value: float | None = None
+            qa_path = meta_path.parent / "qa_score.json"
+            if qa_path.exists():
+                try:
+                    qa_obj = json.loads(qa_path.read_text(encoding="utf-8"))
+                    if isinstance(qa_obj, dict) and qa_obj.get("normalized_score") is not None:
+                        qa_score_value = float(qa_obj.get("normalized_score"))
+                except Exception:
+                    qa_score_value = None
+            rows.append(
+                {
+                    "episode_dir": str(meta_path.parent),
+                    "scenario_id": str(meta.get("scenario_id", "")),
+                    "incident_id": str(meta.get("incident_id", "")),
+                    "end_ts": str(meta.get("end_ts", "")),
+                    "total_turns": int(meta.get("total_turns", 0) or 0),
+                    "total_events": int(meta.get("total_events", 0) or 0),
+                    "qa_score": qa_score_value,
+                }
+            )
+
+        (root / "index.json").write_text(json.dumps({"episodes": rows}, indent=2, sort_keys=True), encoding="utf-8")
+        with (root / "index.csv").open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=["episode_dir", "scenario_id", "incident_id", "end_ts", "total_turns", "total_events", "qa_score"],
+            )
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+
     def _latest_calltaker_text(self, incident_id: str) -> str:
         turns = self.app.engine.plant_get_transcript_since(incident_id, 0).get("turns", [])
         if not turns:
@@ -383,7 +719,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             return ""
         return str(turns[-1].get("caller", ""))
 
-    def _prime_caller_for_manual_calltaker(self, incident_id: str) -> None:
+    def _prime_caller_for_manual_calltaker(self, incident_id: str, call_taker_text: str | None = None) -> None:
         if not is_manual("calltaker", self.app.calltaker_agent_id):
             return
         if is_manual("caller", self.app.caller_agent_id):
@@ -403,8 +739,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         else:
             if not self.app.caller_agent:
                 return
-            last_ct = self._latest_calltaker_text(incident_id)
-            caller_text, caller_meta = self.app.caller_agent.next_turn(call_taker_text=last_ct, system_events=system_events)
+            ct_input = str(call_taker_text or "").strip() or self._latest_calltaker_text(incident_id)
+            caller_text, caller_meta = self.app.caller_agent.next_turn(call_taker_text=ct_input, system_events=system_events)
         self.app.engine.caller_post_turn(incident_id=incident_id, text=caller_text, metadata=caller_meta)
 
     def _load_replay_for_console(self, scenario_id: str, incident_seed: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -502,16 +838,29 @@ def main() -> None:
     parser.add_argument("--root", default=".")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8101)
+    parser.add_argument("--agent-config-dir", default="agents/config")
+    parser.add_argument("--artifacts-dir", default="runs")
+    parser.add_argument("--run-id", default="")
+    parser.add_argument("--no-auto-save-on-end", action="store_true")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
     ui_root = root / "ui"
-    state = ConsoleState(root=root, ui_root=ui_root, engine=SimulationEngine(execution_id="console-init"))
+    run_id = str(args.run_id).strip() or f"run_{int(time.time())}"
+    state = ConsoleState(
+        root=root,
+        ui_root=ui_root,
+        engine=SimulationEngine(execution_id="console-init"),
+        agent_config_root=(root / args.agent_config_dir).resolve(),
+        artifacts_root=(root / args.artifacts_dir).resolve(),
+        run_id=run_id,
+        auto_save_on_end=not bool(args.no_auto_save_on_end),
+    )
 
     server = ThreadingHTTPServer((args.host, args.port), ConsoleHandler)
     server.app_state = state  # type: ignore[attr-defined]
 
-    print(f"SIM console server listening on http://{args.host}:{args.port}")
+    print(f"SIM console server listening on http://{args.host}:{args.port} (run_id={run_id})")
     server.serve_forever()
 
 

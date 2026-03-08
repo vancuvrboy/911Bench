@@ -1,0 +1,242 @@
+[
+  {
+    "test_id": "SBND-001",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "g1",
+        "payload": {
+          "location": "A"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "location": "A"
+      },
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "SBND-002",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "state_snapshot"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "state_snapshot"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      },
+      {
+        "action": "artifact_get"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "SBND-003",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "transcript_since",
+        "cursor": 0
+      },
+      {
+        "action": "transcript_since",
+        "cursor": 1
+      },
+      {
+        "action": "transcript_since",
+        "cursor": 99
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "SBND-004",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "g2",
+        "payload": {
+          "priority": "high"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_record_version_min": 1
+    }
+  },
+  {
+    "test_id": "SBND-005",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "sb5",
+        "payload": {
+          "location": "YY"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        },
+        "checkpoint_ref": "req-1",
+        "checkpoint_decision": "approved"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "cad_patch_applied"
+      ]
+    }
+  },
+  {
+    "test_id": "SBND-006",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "emit_event",
+        "event": {
+          "event_type": "governance_correlation",
+          "action_id": "sb6",
+          "matched_rule_ids": [
+            "r1"
+          ],
+          "policy_id": "p"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "SBND-007",
+    "category": "southbound",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "g3",
+        "payload": {
+          "priority": "low"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        }
+      }
+    ],
+    "expected": {
+      "error_contains": "episode is sealed"
+    }
+  }
+]

@@ -6,9 +6,11 @@ Implements Section 2 interfaces as in-process Python methods for harness-driven 
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from sim_server.errors import ConflictError, StateError, ValidationError
@@ -54,6 +56,7 @@ class Episode:
     awaiting_caller_for_turn: int = 1
     pending_caller_text: str = ""
     pending_caller_metadata: dict[str, Any] | None = None
+    agent_config_snapshot: dict[str, Any] | None = None
     dispatch_triggered: bool = False
     dispatch_turn: int | None = None
     post_dispatch_turn_count: int = 0
@@ -87,6 +90,7 @@ class SimulationEngine:
         incident_json: dict[str, Any],
         qa_template_id: str,
         qa_template_json: dict[str, Any],
+        agent_config_snapshot: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         validate_seed_triplet(caller_json, incident_json, qa_template_json)
 
@@ -101,6 +105,7 @@ class SimulationEngine:
             incident_json=incident_json,
             qa_template_id=qa_template_id,
             qa_template_json=qa_template_json,
+            agent_config_snapshot=self._normalize_agent_config_snapshot(agent_config_snapshot),
             first_responder_delay=int(incident_json.get("first_responder_delay", 8)),
             max_turns=int(incident_json.get("max_turns", 30)),
         )
@@ -130,12 +135,7 @@ class SimulationEngine:
                 "incident_type": ep.incident_json.get("type", "unknown"),
                 "qa_template_id": ep.qa_template_id,
                 "schema_version": "events.v4",
-                "agent_config": {
-                    "caller_agent": {"model": "shim", "temperature": 0.0, "prompt_hash": "shim"},
-                    "calltaker_agent": {"model": "shim", "temperature": 0.0, "prompt_hash": "shim"},
-                    "helper_agent": None,
-                    "qa_agent": {"model": "shim", "temperature": 0.0, "prompt_hash": "shim"},
-                },
+                "agent_config": self._normalize_agent_config_snapshot(ep.agent_config_snapshot),
             },
         )
         return {"status": "running", "episode_ts": ep.start_ts}
@@ -160,7 +160,7 @@ class SimulationEngine:
 
         turn = ep.awaiting_caller_for_turn
         ep.pending_caller_text = text
-        ep.pending_caller_metadata = metadata
+        ep.pending_caller_metadata = self._sanitize_caller_metadata(metadata)
 
         return {"turn": turn, "ts": _iso_now(), "status": "accepted"}
 
@@ -459,6 +459,121 @@ class SimulationEngine:
             raise ValidationError("artifact_not_found", f"unknown artifact: {name}")
         return {"name": name, "content": ep.sealed_artifacts[name]}
 
+    def build_artifact_bundle(
+        self,
+        incident_id: str,
+        *,
+        qa_score: dict[str, Any] | None = None,
+        extra_meta: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        ep = self._get_episode(incident_id)
+        if ep.phase != "sealed":
+            raise StateError("episode_not_sealed", "episode not yet sealed")
+
+        transcript_rows = [ev for ev in ep.events if ev.get("event_type") == "conversation"]
+        events_ndjson = "\n".join(json.dumps(ev, sort_keys=True) for ev in ep.events)
+
+        def _hash_obj(obj: Any) -> str:
+            blob = json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            return hashlib.sha256(blob).hexdigest()
+
+        meta: dict[str, Any] = {
+            "execution_id": self.execution_id,
+            "scenario_id": ep.scenario_id,
+            "incident_id": ep.incident_id,
+            "phase": ep.phase,
+            "start_ts": ep.start_ts,
+            "end_ts": ep.end_ts,
+            "total_events": len(ep.events),
+            "total_turns": int(ep.current_turn),
+            "record_version": int(ep.record_version),
+            "field_versions": dict(ep.field_versions),
+            "fixtures": {
+                "caller_profile_id": ep.caller_json.get("profile_id"),
+                "incident_type": ep.incident_json.get("type"),
+                "qa_template_id": ep.qa_template_id,
+            },
+            "seed_hashes": {
+                "caller_json_sha256": _hash_obj(ep.caller_json),
+                "incident_json_sha256": _hash_obj(ep.incident_json),
+                "qa_template_json_sha256": _hash_obj(ep.qa_template_json),
+            },
+            "artifact_hashes": {
+                "_events.ndjson.sha256": hashlib.sha256(events_ndjson.encode("utf-8")).hexdigest(),
+                "transcript.json.sha256": _hash_obj(transcript_rows),
+            },
+        }
+        if qa_score is not None:
+            meta["artifact_hashes"]["qa_score.json.sha256"] = _hash_obj(qa_score)
+            if isinstance(qa_score, dict):
+                meta["qa_summary"] = {
+                    "normalized_score": qa_score.get("normalized_score"),
+                    "incident_type": qa_score.get("incident_type"),
+                }
+        if extra_meta:
+            meta.update(extra_meta)
+
+        out: dict[str, Any] = {
+            "_events.ndjson": events_ndjson,
+            "transcript.json": transcript_rows,
+            "meta.json": meta,
+        }
+        if qa_score is not None:
+            out["qa_score.json"] = qa_score
+        return out
+
+    def save_artifact_bundle(
+        self,
+        incident_id: str,
+        *,
+        output_root: str | Path,
+        run_id: str,
+        episode_id: str | None = None,
+        qa_score: dict[str, Any] | None = None,
+        extra_meta: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        bundle = self.build_artifact_bundle(incident_id, qa_score=qa_score, extra_meta=extra_meta)
+        ep = self._get_episode(incident_id)
+
+        def _slug(value: str) -> str:
+            out = "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in str(value))
+            return out.strip("_") or "unknown"
+
+        scenario_slug = _slug(ep.scenario_id)
+        incident_slug = _slug(ep.incident_id)
+        if episode_id is None:
+            end_stamp = (
+                str(ep.end_ts or _iso_now())
+                .replace(":", "")
+                .replace("-", "")
+                .replace(".", "")
+                .replace("+0000", "Z")
+                .replace("+00:00", "Z")
+            )
+            episode_id = f"{incident_slug}__{end_stamp}"
+
+        run_root = Path(output_root) / _slug(run_id)
+        episode_dir = run_root / scenario_slug / _slug(episode_id)
+        episode_dir.mkdir(parents=True, exist_ok=True)
+
+        for name, content in bundle.items():
+            path = episode_dir / name
+            if name.endswith(".ndjson") and isinstance(content, str):
+                path.write_text(content + ("\n" if content and not content.endswith("\n") else ""), encoding="utf-8")
+            elif name.endswith(".json"):
+                path.write_text(json.dumps(content, indent=2, sort_keys=True), encoding="utf-8")
+            else:
+                path.write_text(str(content), encoding="utf-8")
+
+        return {
+            "run_id": run_id,
+            "scenario_id": ep.scenario_id,
+            "incident_id": ep.incident_id,
+            "episode_id": episode_id,
+            "episode_dir": str(episode_dir),
+            "files": sorted(bundle.keys()),
+        }
+
     def episode_events(self, incident_id: str) -> list[dict[str, Any]]:
         """Expose a copy of in-memory events for local harness orchestration."""
         ep = self._get_episode(incident_id)
@@ -632,6 +747,58 @@ class SimulationEngine:
         ev["event_seq"] = len(ep.events)
         validate_event_minimal(ev)
         ep.events.append(ev)
+
+    def _sanitize_caller_metadata(self, metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(metadata, dict):
+            return None
+        allowed_keys = {"agent_profile_id", "source", "response_id", "fallback", "error_code"}
+        cleaned = {k: metadata[k] for k in allowed_keys if k in metadata}
+        if not cleaned:
+            return None
+        if "fallback" in cleaned:
+            cleaned["fallback"] = bool(cleaned["fallback"])
+        return cleaned
+
+    def _normalize_agent_config_snapshot(self, snapshot: dict[str, Any] | None) -> dict[str, Any]:
+        default = {
+            "caller_agent": {
+                "profile_id": "unknown",
+                "provider": "unknown",
+                "mode": "unknown",
+                "model": "unknown",
+                "temperature": 0.0,
+                "prompt_hash": "none",
+            },
+            "calltaker_agent": {
+                "profile_id": "unknown",
+                "provider": "unknown",
+                "mode": "unknown",
+                "model": "unknown",
+                "temperature": 0.0,
+                "prompt_hash": "none",
+            },
+            "helper_agent": None,
+            "qa_agent": {
+                "profile_id": "unknown",
+                "provider": "unknown",
+                "mode": "unknown",
+                "model": "unknown",
+                "temperature": 0.0,
+                "prompt_hash": "none",
+            },
+        }
+        if not isinstance(snapshot, dict):
+            return default
+        out = dict(default)
+        for key in ("caller_agent", "calltaker_agent", "qa_agent"):
+            value = snapshot.get(key)
+            if isinstance(value, dict):
+                merged = dict(out[key])
+                merged.update({k: v for k, v in value.items() if k in merged or k == "config_sha256"})
+                out[key] = merged
+        helper = snapshot.get("helper_agent")
+        out["helper_agent"] = helper if isinstance(helper, dict) else None
+        return out
 
     def _is_timed_out(self, req: CheckpointRequest) -> bool:
         now = dt.datetime.now(dt.timezone.utc)

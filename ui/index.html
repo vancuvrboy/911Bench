@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>911Bench SIM Console</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>911Bench SIM Call Console</h1>
+        <p class="sub">Section 2.6 standalone operator UI (research profile)</p>
+      </div>
+      <div class="toolbar">
+        <label>Verbosity
+          <select id="verbosity">
+            <option value="compact">Compact</option>
+            <option value="detailed" selected>Detailed</option>
+          </select>
+        </label>
+        <button id="refreshBtn">Refresh</button>
+      </div>
+    </header>
+
+    <section class="card controls">
+      <h2>Episode Setup</h2>
+      <div class="grid setup-grid">
+        <label>Scenario ID <input id="scenarioId" value="" placeholder="optional (auto-generated if blank)" /></label>
+        <label>Caller Fixture
+          <select id="callerFixture">
+            <option value="fixtures/caller_cooperative_calm.json">cooperative_calm</option>
+            <option value="fixtures/caller_uncooperative.json">uncooperative</option>
+            <option value="fixtures/caller_on_ask_once.json">on_ask_once</option>
+          </select>
+        </label>
+        <label>Incident Fixture
+          <select id="incidentFixture">
+            <option value="fixtures/incident_fire_residential.json">fire_residential</option>
+            <option value="fixtures/incident_police_domestic.json">police_domestic</option>
+            <option value="fixtures/incident_ems_cardiac.json">ems_cardiac</option>
+          </select>
+        </label>
+        <label>QA Fixture
+          <select id="qaFixture">
+            <option value="fixtures/qaTemplate_003.json">qaTemplate_003</option>
+          </select>
+        </label>
+        <label>Caller Agent
+          <select id="callerAgentId"></select>
+        </label>
+        <label>Call-Taker Agent
+          <select id="calltakerAgentId"></select>
+        </label>
+        <label>QA Agent
+          <select id="qaAgentId"></select>
+        </label>
+        <label>Max Turns <input id="maxTurns" type="number" value="20" min="3" max="100" /></label>
+      </div>
+      <button id="loadStartBtn">Load + Start Episode</button>
+      <div id="setupStatus" class="status"></div>
+    </section>
+
+    <main class="layout">
+      <section class="card transcript">
+        <div class="card-head">
+          <h2>Live Transcript</h2>
+          <div class="row-inline">
+            <input id="searchBox" placeholder="Search transcript..." />
+            <input id="jumpTurn" type="number" min="1" placeholder="Turn #" />
+            <button id="jumpBtn">Jump</button>
+          </div>
+        </div>
+        <div id="transcriptList" class="transcript-list"></div>
+      </section>
+
+      <section class="card sidebar">
+        <h2>Status / Metrics</h2>
+        <pre id="metricsView"></pre>
+      </section>
+
+      <section class="card location">
+        <h2>Location Panel</h2>
+        <pre id="locationView"></pre>
+      </section>
+
+      <section class="card cad">
+        <h2>CAD Panel</h2>
+        <pre id="cadView"></pre>
+      </section>
+
+      <section class="card sop">
+        <div class="card-head">
+          <h2>SOP / KB Panel</h2>
+          <div class="row-inline">
+            <select id="sopIncidentType">
+              <option>Fire</option>
+              <option>Police</option>
+              <option>Ems</option>
+            </select>
+            <select id="sopStep">
+              <option value="initial">initial</option>
+              <option value="dispatch">dispatch</option>
+              <option value="all">all</option>
+            </select>
+            <button id="sopFetchBtn">Fetch</button>
+          </div>
+        </div>
+        <div id="sopView"></div>
+      </section>
+
+      <section class="card action">
+        <h2>Turn Controls</h2>
+        <div class="row-inline">
+          <button id="autoStepBtn">Auto Step (1)</button>
+          <button id="autoRun5Btn">Auto Run (5)</button>
+          <button id="qaEvalBtn">Evaluate QA</button>
+          <button id="saveArtifactsBtn">Save Artifacts</button>
+        </div>
+        <label>Caller Text</label>
+        <textarea id="callerText" rows="2"></textarea>
+        <button id="callerSendBtn">Post Caller Turn</button>
+
+        <label>Call-Taker Text</label>
+        <textarea id="ctText" rows="2"></textarea>
+        <label>CAD Updates JSON</label>
+        <textarea id="ctCadJson" rows="4">{}</textarea>
+        <button id="ctSendBtn">Post Call-Taker Turn</button>
+
+        <div class="row-inline">
+          <select id="endReason">
+            <option value="responders_arrived">responders_arrived</option>
+            <option value="resolved_no_dispatch">resolved_no_dispatch</option>
+            <option value="caller_disconnected">caller_disconnected</option>
+            <option value="other">other</option>
+          </select>
+          <input id="endReasonDetail" placeholder="optional reason detail" />
+          <button id="endCallBtn">End Call</button>
+        </div>
+      </section>
+
+      <section class="card inbox">
+        <h2>Checkpoint Inbox (call_taker)</h2>
+        <div id="checkpointInbox"></div>
+      </section>
+
+      <section class="card inbox escalations">
+        <h2>Escalation Inbox (supervisor)</h2>
+        <div id="escalationInbox"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+  </html>

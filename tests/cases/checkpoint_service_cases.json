@@ -1,0 +1,539 @@
+[
+  {
+    "test_id": "CHKP-001",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.priority",
+          "proposed_payload": {
+            "priority": "high"
+          },
+          "evidence_summary": "caller panic",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_poll"
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "checkpoint_poll"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true,
+      "event_types_present": [
+        "checkpoint_decision"
+      ]
+    }
+  },
+  {
+    "test_id": "CHKP-002",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "x",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_poll"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-003",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "x",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "checkpoint_poll"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-004",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.priority",
+          "proposed_payload": {
+            "priority": "low"
+          },
+          "evidence_summary": "weak",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "denied"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-005",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.address",
+          "proposed_payload": {
+            "location": "old"
+          },
+          "evidence_summary": "mismatch",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "edited_approved",
+        "edited_payload": {
+          "location": "new"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-006",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.priority",
+          "proposed_payload": {
+            "priority": "urgent"
+          },
+          "evidence_summary": "escalate",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "deferred_escalated"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-007",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "x",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "supervisor",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "re_escalated",
+        "re_escalate_to": "commander"
+      },
+      {
+        "action": "checkpoint_list",
+        "role_filter": "commander"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-008",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_list",
+        "role_filter": "call_taker"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-009",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "supervisor",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_list",
+        "role_filter": "supervisor"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-010",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.priority",
+          "proposed_payload": {
+            "priority": "urgent"
+          },
+          "evidence_summary": "risk",
+          "approver_role": "supervisor",
+          "source": "escalation_reactive",
+          "escalation_context": {
+            "trigger": "policy",
+            "escalation_depth": 1
+          },
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-011",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 1
+        }
+      },
+      {
+        "action": "sleep_ms",
+        "ms": 5
+      },
+      {
+        "action": "checkpoint_poll"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-012",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "checkpoint_decision"
+      ]
+    }
+  },
+  {
+    "test_id": "CHKP-013",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "deferred_escalated"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "checkpoint_decision"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "CHKP-014",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      }
+    ],
+    "expected": {
+      "error_contains": "already resolved"
+    }
+  },
+  {
+    "test_id": "CHKP-015",
+    "category": "checkpoint",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_submit",
+        "request_id": "req-does-not-exist",
+        "decision": "approved"
+      }
+    ],
+    "expected": {
+      "error_contains": "request not found"
+    }
+  }
+]

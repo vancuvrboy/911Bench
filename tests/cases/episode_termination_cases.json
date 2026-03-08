@@ -1,0 +1,591 @@
+[
+  {
+    "test_id": "TERM-001",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "fire"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "dispatching",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "ok"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "units arrived"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "system",
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-002",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "t2",
+        "payload": {
+          "dispatch_triggered": true
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "dispatch_triggered": 0
+          }
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "ok"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "waiting"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "system",
+        "cad_patch_applied"
+      ]
+    }
+  },
+  {
+    "test_id": "TERM-003",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "fire"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "sending",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "system"
+      ]
+    }
+  },
+  {
+    "test_id": "TERM-004",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "fire"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "dispatch",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "emit_event",
+        "event": {
+          "event_type": "governance_correlation",
+          "action_id": "x",
+          "matched_rule_ids": [
+            "r"
+          ],
+          "policy_id": "p"
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "after"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "after"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-005",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "episode_end"
+      ]
+    }
+  },
+  {
+    "test_id": "TERM-006",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "caller_turn",
+        "text": "e"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "f"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-007",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-008",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "non emergency"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "closing"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true
+    }
+  },
+  {
+    "test_id": "TERM-009",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_quick.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "fire"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "dispatching",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "error_contains": "dispatch already triggered"
+    }
+  },
+  {
+    "test_id": "TERM-010",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_max_turns_5.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "1"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "1"
+      },
+      {
+        "action": "caller_turn",
+        "text": "2"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "2"
+      },
+      {
+        "action": "caller_turn",
+        "text": "3"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "3"
+      },
+      {
+        "action": "caller_turn",
+        "text": "4"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "4"
+      },
+      {
+        "action": "caller_turn",
+        "text": "5"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "5"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "episode_end",
+        "system"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-011",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_max_turns_5.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "1"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "1"
+      },
+      {
+        "action": "caller_turn",
+        "text": "2"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "2"
+      },
+      {
+        "action": "caller_turn",
+        "text": "3"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "3"
+      },
+      {
+        "action": "caller_turn",
+        "text": "4"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "4"
+      },
+      {
+        "action": "caller_turn",
+        "text": "5"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "5"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-012",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      },
+      {
+        "action": "caller_turn",
+        "text": "late"
+      }
+    ],
+    "expected": {
+      "error_contains": "episode is sealed"
+    }
+  },
+  {
+    "test_id": "TERM-013",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "a",
+          "proposed_payload": {},
+          "evidence_summary": "e",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "checkpoint_decision"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TERM-014",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b",
+        "cad_updates": {
+          "location": "X"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "location": "X"
+      }
+    }
+  },
+  {
+    "test_id": "TERM-015",
+    "category": "termination",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "line dropped"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "attempt callback"
+      },
+      {
+        "action": "end_call",
+        "reason": "caller_disconnected"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "system",
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  }
+]

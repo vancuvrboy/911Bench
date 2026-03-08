@@ -1,0 +1,8 @@
+{
+  "ruleset_id": "bad",
+  "version": "001",
+  "normalize_to": 100,
+  "templates": {
+    "FIRE": {"version_date": "2026-01-01", "global_guidance": {}, "sections": []}
+  }
+}

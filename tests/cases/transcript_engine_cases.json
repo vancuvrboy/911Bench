@@ -1,0 +1,284 @@
+[
+  {
+    "test_id": "TXPT-001",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Turn 1 caller"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Turn 1 ct"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Turn 2 caller"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Turn 2 ct"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Turn 3 caller"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Turn 3 ct"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true,
+      "events_schema_valid": true,
+      "event_types_present": [
+        "conversation",
+        "episode_end"
+      ]
+    }
+  },
+  {
+    "test_id": "TXPT-002",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Call",
+        "metadata": {
+          "emotional_state": "panicked"
+        }
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Ack"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true,
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TXPT-003",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Address is unknown"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Need address",
+        "cad_updates": {
+          "location": "Unknown"
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_record_version_min": 1,
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TXPT-004",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "No update"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Acknowledged"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TXPT-005",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "meta turn",
+        "metadata": {
+          "emotional_state": "stressed",
+          "disclosure_tracker": {
+            "name": true
+          }
+        }
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "ack"
+      },
+      {
+        "action": "state_snapshot"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TXPT-006",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "transcript_since",
+        "cursor": 0
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TXPT-007",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "a"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "b"
+      },
+      {
+        "action": "caller_turn",
+        "text": "c"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "d"
+      },
+      {
+        "action": "caller_turn",
+        "text": "e"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "f"
+      },
+      {
+        "action": "transcript_since",
+        "cursor": 2
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "TXPT-008",
+    "category": "transcript",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "transcript_since",
+        "cursor": 0
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "events_schema_valid": true
+    }
+  }
+]

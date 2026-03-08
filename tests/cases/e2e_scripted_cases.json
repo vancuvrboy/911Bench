@@ -1,0 +1,386 @@
+[
+  {
+    "test_id": "E2E-001",
+    "category": "e2e",
+    "deterministic": true,
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_fire_residential.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Fire at 2421 Main"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Dispatching now",
+        "cad_updates": {
+          "dispatch_triggered": true,
+          "location": "2421 Main Street"
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "Smoke is worse"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Stay outside"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Waiting"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Units close"
+      },
+      {
+        "action": "caller_turn",
+        "text": "I see lights"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Responders arrived"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "meta",
+        "conversation",
+        "tool_call",
+        "system",
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "E2E-002",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_police_domestic.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Fight next door"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Any weapons?",
+        "cad_updates": {
+          "dispatch_triggered": true
+        }
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "gp1",
+        "action_class": "cad_update.address",
+        "payload": {
+          "location": "100 Granville"
+        },
+        "read_set": {
+          "record_version": 1,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "caller_turn",
+        "text": "No weapons seen"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "Units en route"
+      },
+      {
+        "action": "end_call",
+        "reason": "responders_arrived"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "cad_patch_applied",
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "E2E-003",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "Sorry wrong number"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "No problem"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "episode_sealed": true,
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "E2E-004",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "help"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "stay"
+      },
+      {
+        "action": "end_call",
+        "reason": "caller_disconnected"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "system",
+        "episode_end"
+      ]
+    }
+  },
+  {
+    "test_id": "E2E-005",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.priority",
+          "proposed_payload": {
+            "priority": "high"
+          },
+          "evidence_summary": "risk",
+          "approver_role": "call_taker",
+          "source": "checkpoint",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "e5",
+        "payload": {
+          "priority": "high"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "priority": 0
+          }
+        },
+        "checkpoint_ref": "req",
+        "checkpoint_decision": "approved"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "checkpoint_decision",
+        "cad_patch_applied"
+      ]
+    }
+  },
+  {
+    "test_id": "E2E-006",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "checkpoint_request",
+        "request": {
+          "action_class": "cad_update.priority",
+          "proposed_payload": {
+            "priority": "high"
+          },
+          "evidence_summary": "risk",
+          "approver_role": "supervisor",
+          "source": "escalation_reactive",
+          "escalation_context": {
+            "trigger": "bound",
+            "escalation_depth": 1
+          },
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "action": "checkpoint_submit",
+        "decision": "approved"
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "checkpoint_decision"
+      ],
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "E2E-007",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "e71",
+        "payload": {
+          "location": "A"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "governance_patch",
+        "action_id": "e72",
+        "payload": {
+          "location": "B"
+        },
+        "read_set": {
+          "record_version": 0,
+          "field_versions": {
+            "location": 0
+          }
+        }
+      },
+      {
+        "action": "end_call",
+        "reason": "resolved_no_dispatch"
+      }
+    ],
+    "expected": {
+      "final_cad_state": {
+        "location": "A"
+      },
+      "events_schema_valid": true
+    }
+  },
+  {
+    "test_id": "E2E-008",
+    "category": "e2e",
+    "script": [
+      {
+        "action": "load_scenario",
+        "incident_json": "fixtures/incident_max_turns_5.json"
+      },
+      {
+        "action": "start_episode"
+      },
+      {
+        "action": "caller_turn",
+        "text": "1"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "1"
+      },
+      {
+        "action": "caller_turn",
+        "text": "2"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "2"
+      },
+      {
+        "action": "caller_turn",
+        "text": "3"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "3"
+      },
+      {
+        "action": "caller_turn",
+        "text": "4"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "4"
+      },
+      {
+        "action": "caller_turn",
+        "text": "5"
+      },
+      {
+        "action": "calltaker_turn",
+        "text": "5"
+      }
+    ],
+    "expected": {
+      "event_types_present": [
+        "system",
+        "episode_end"
+      ],
+      "events_schema_valid": true
+    }
+  }
+]

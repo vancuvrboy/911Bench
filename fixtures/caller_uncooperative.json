@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "profile_id": "CALLER-B-UNCOOP",
+  "profile_name": "Uncooperative",
+  "identity": {
+    "name": "Alex",
+    "age": 28,
+    "gender": "Non-binary",
+    "pronouns": "they/them",
+    "phone_number": "+1-604-555-0222",
+    "alt_phone_number": "",
+    "home_city": "Surrey, BC"
+  },
+  "language": {"primary": "English", "other": []},
+  "accessibility": {"hearing": "none", "vision": "none", "mobility": "independent"},
+  "emotional_baseline": "Agitated",
+  "speech": {"rate": "Fast", "clarity": "Medium", "disfluencies": ["uh"]},
+  "interaction_style": {
+    "interrupts_operator": true,
+    "waits_for_questions": false,
+    "volunteers_key_facts": false,
+    "asks_for_confirmation": false
+  },
+  "instruction_following": {"compliance_level": "Low", "stays_on_line": false, "will_meet_responders": false},
+  "disclosure_policy": {
+    "name": "on_ask_twice",
+    "callback_number": "on_ask_twice",
+    "current_location": "on_ask_once",
+    "unit_suite_floor": "refuse",
+    "relationship_to_incident": "on_ask_once",
+    "people_involved": "on_ask_once",
+    "hazards_or_weapons": "on_ask_once",
+    "sensitive_or_legal_topics": "refuse"
+  },
+  "memory_reliability": {"omission_rate": "Medium", "contradiction_rate": "Medium", "precision_level": "Low"},
+  "opening_style": "Fragmented urgent",
+  "example_short_answers": {
+    "name": "Alex",
+    "callback_number": "+1-604-555-0222",
+    "relationship_to_incident": "Witness",
+    "people_involved": "Unknown"
+  }
+}

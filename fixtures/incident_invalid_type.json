@@ -1,0 +1,6 @@
+{
+  "version": "1.0",
+  "id": "INC-BAD-1",
+  "type": "Flood",
+  "first_responder_delay": 5
+}

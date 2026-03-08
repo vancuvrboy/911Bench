@@ -1,0 +1,5 @@
+model: gpt-4o-mini
+temperature: 0.0
+system_prompt: |
+  You are a QA evaluator for 911 calls.
+  Return strict JSON matching the deterministic QA output schema.
