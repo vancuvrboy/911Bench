@@ -4,7 +4,7 @@ Date: 2026-03-07
 Repo: 911Bench
 
 ## Scope
-Executed the Phase 4 end-to-end pipeline harness implementing `PIPE-001..PIPE-044` checks defined in the integration plan (Phase 4 section), with deterministic normalization rules from Section 1.4.
+Executed the Phase 4 end-to-end pipeline harness for the planned 19 PIPE IDs in the `PIPE-001..PIPE-044` namespace (per `911Bench_Integration_Test_Plan_v2_1.docx`), with deterministic normalization rules from Section 1.4.
 
 ## Command
 

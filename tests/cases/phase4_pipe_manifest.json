@@ -1,0 +1,26 @@
+{
+  "source": "911Bench_Integration_Test_Plan_v2_1.docx",
+  "phase": "Phase 4",
+  "description": "Planned PIPE IDs for Phase 4 in v2.1. The namespace is PIPE-001..PIPE-044, with 19 required tests.",
+  "planned_pipe_ids": [
+    "PIPE-001",
+    "PIPE-002",
+    "PIPE-003",
+    "PIPE-004",
+    "PIPE-005",
+    "PIPE-010",
+    "PIPE-011",
+    "PIPE-012",
+    "PIPE-020",
+    "PIPE-021",
+    "PIPE-022",
+    "PIPE-030",
+    "PIPE-031",
+    "PIPE-032",
+    "PIPE-040",
+    "PIPE-041",
+    "PIPE-042",
+    "PIPE-043",
+    "PIPE-044"
+  ]
+}

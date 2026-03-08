@@ -188,6 +188,15 @@ def _load_json(path: Path) -> JSONObject:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_pipe_manifest(root: Path) -> list[str]:
+    manifest_path = root / "tests/cases/phase4_pipe_manifest.json"
+    payload = _load_json(manifest_path)
+    ids = payload.get("planned_pipe_ids", [])
+    if not isinstance(ids, list) or not ids:
+        raise RuntimeError(f"invalid_phase4_manifest:{manifest_path}")
+    return [str(x) for x in ids]
+
+
 def _run_single(
     *,
     sim_url: str,
@@ -420,7 +429,12 @@ def run(root: Path, output_dir: Path) -> int:
 
     sim_proc = subprocess.Popen(sim_cmd, cwd=root)
     gov_proc = subprocess.Popen(gov_cmd, cwd=root)
-    report: JSONObject = {"tests": {}, "bundle_dir": str(bundle_dir)}
+    planned_pipe_ids = _load_pipe_manifest(root)
+    report: JSONObject = {
+        "tests": {},
+        "bundle_dir": str(bundle_dir),
+        "plan_alignment": {"planned_pipe_ids": planned_pipe_ids},
+    }
     runs: list[RunRecord] = []
     try:
         _wait_for(f"{sim_url}/healthz")
@@ -759,10 +773,21 @@ def run(root: Path, output_dir: Path) -> int:
         csv_rows = csv_path.read_text(encoding="utf-8").splitlines()
         report["tests"]["PIPE-044"] = {"pass": len(csv_rows) == len(runs) + 1, "detail": {"csv_rows": len(csv_rows), "expected": len(runs) + 1}}
 
-        # Gate summary.
+        # Gate summary + integration-plan alignment.
+        observed_ids = sorted(report["tests"].keys())
+        missing_ids = [pid for pid in planned_pipe_ids if pid not in report["tests"]]
+        unexpected_ids = [pid for pid in observed_ids if pid not in planned_pipe_ids]
+        report["plan_alignment"]["missing_ids"] = missing_ids
+        report["plan_alignment"]["unexpected_ids"] = unexpected_ids
+        report["plan_alignment"]["planned_total"] = len(planned_pipe_ids)
+        report["plan_alignment"]["observed_total"] = len(observed_ids)
+        report["plan_alignment"]["pass"] = not missing_ids and not unexpected_ids
+
         total = len(report["tests"])
         passed = sum(1 for t in report["tests"].values() if t.get("pass"))
         failed = total - passed
+        if missing_ids or unexpected_ids:
+            failed += 1
         report["summary"] = {
             "total": total,
             "passed": passed,
