@@ -51,3 +51,9 @@ Phase 3 smoke (governance server wired to real SIM southbound adapter):
 ```bash
 python3 -m tests.harness.phase3_smoke --root . --output tests/results/phase3_smoke_report.json
 ```
+
+Phase 3 INT southbound block (`INT-001..INT-006`):
+
+```bash
+python3 -m tests.harness.phase3_int --root . --output tests/results/phase3_int_report.json
+```

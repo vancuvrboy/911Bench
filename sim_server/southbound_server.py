@@ -23,6 +23,7 @@ class AppState:
     root: Path
     engine: SimulationEngine
     auto_approve_checkpoints: bool = True
+    route_counts: dict[str, int] | None = None
 
 
 class SouthboundHandler(BaseHTTPRequestHandler):
@@ -43,8 +44,14 @@ class SouthboundHandler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             payload = self._read_json()
+            if self.app.route_counts is None:
+                self.app.route_counts = {}
+            self.app.route_counts[parsed.path] = int(self.app.route_counts.get(parsed.path, 0)) + 1
             routes: dict[str, Callable[[JSONObject], JSONObject]] = {
                 "/admin/load_start": self._admin_load_start,
+                "/admin/post_turn": self._admin_post_turn,
+                "/admin/events": self._admin_events,
+                "/admin/stats": self._admin_stats,
                 "/plant/get_state_snapshot": lambda body: self.app.engine.plant_get_state_snapshot(
                     incident_id=str(body.get("incident_id", ""))
                 ),
@@ -53,9 +60,7 @@ class SouthboundHandler(BaseHTTPRequestHandler):
                     cursor=int(body.get("cursor", 0)),
                 ),
                 "/plant/apply_cad_patch": self._plant_apply_patch,
-                "/plant/emit_event": lambda body: self.app.engine.plant_emit_event(
-                    event=self._normalize_event(body.get("event", {})),
-                ),
+                "/plant/emit_event": self._plant_emit_event_safe,
                 "/checkpoint/request": self._checkpoint_request,
                 "/checkpoint/poll": lambda body: self.app.engine.checkpoint_poll(
                     request_id=str(body.get("request_id", ""))
@@ -93,6 +98,29 @@ class SouthboundHandler(BaseHTTPRequestHandler):
         )
         started = self.app.engine.episode_start(loaded["incident_id"])
         return {"loaded": loaded, "started": started}
+
+    def _admin_post_turn(self, payload: JSONObject) -> JSONObject:
+        incident_id = str(payload.get("incident_id", ""))
+        caller_text = str(payload.get("caller", ""))
+        call_taker_text = str(payload.get("call_taker", ""))
+        cad_updates = payload.get("cad_updates", {})
+        if not isinstance(cad_updates, dict):
+            cad_updates = {}
+        caller = self.app.engine.caller_post_turn(incident_id=incident_id, text=caller_text)
+        calltaker = self.app.engine.calltaker_post_turn(
+            incident_id=incident_id,
+            text=call_taker_text,
+            cad_updates=cad_updates,
+        )
+        return {"caller": caller, "call_taker": calltaker}
+
+    def _admin_events(self, payload: JSONObject) -> JSONObject:
+        incident_id = str(payload.get("incident_id", ""))
+        events = self.app.engine.episode_events(incident_id=incident_id)
+        return {"incident_id": incident_id, "events": events, "count": len(events)}
+
+    def _admin_stats(self, payload: JSONObject) -> JSONObject:
+        return {"route_counts": dict(self.app.route_counts or {})}
 
     def _checkpoint_request(self, payload: JSONObject) -> JSONObject:
         incident_id = str(payload.get("incident_id", ""))
@@ -132,7 +160,16 @@ class SouthboundHandler(BaseHTTPRequestHandler):
         normalized = dict(event)
         if "event_type" not in normalized and "type" in normalized:
             normalized["event_type"] = str(normalized.get("type", "system"))
+        if "incident_id" not in normalized and normalized.get("event_type") == "policy_swapped":
+            # Governance can emit control-plane events not scoped to a single incident.
+            normalized["incident_id"] = "__control_plane__"
         return normalized
+
+    def _plant_emit_event_safe(self, payload: JSONObject) -> JSONObject:
+        event = self._normalize_event(payload.get("event", {}))
+        if event.get("incident_id") == "__control_plane__":
+            return {"status": "ignored_control_plane"}
+        return self.app.engine.plant_emit_event(event=event)
 
     def _send_json(self, payload: JSONObject, status: HTTPStatus = HTTPStatus.OK) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -157,6 +194,7 @@ def run_server() -> None:
         root=Path(args.root).resolve(),
         engine=SimulationEngine(execution_id=args.execution_id),
         auto_approve_checkpoints=bool(args.auto_approve_checkpoints),
+        route_counts={},
     )
     httpd = ThreadingHTTPServer((args.host, int(args.port)), SouthboundHandler)
     httpd.app_state = app_state  # type: ignore[attr-defined]
