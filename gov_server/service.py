@@ -75,6 +75,7 @@ class GovernanceService:
         self.plant_by_incident: dict[str, Any] = {}
         self.action_to_audit_ref: dict[str, str] = {}
         self.idempotency_cache: dict[str, JSONObject] = {}
+        self._dsa_overrides_by_incident: dict[str, JSONObject] = {}
         self.state_store: StateStore | None = None
         self.southbound_client: SimulationSouthboundClient | None = None
         self._southbound_cursor_by_incident: dict[str, int] = {}
@@ -223,7 +224,7 @@ class GovernanceService:
                 agent_id=proposer.get("agent_id", "unknown"),
             )
             proposal_for_engine = copy.deepcopy(proposal)
-            dsa_advice = self._run_dsa_advice(proposal_for_engine, snapshot)
+            dsa_advice = self._run_dsa_advice(incident_id=incident_id, proposal=proposal_for_engine, context_snapshot=snapshot)
             transcript_turns = [turn.get("turn", 0) for turn in snapshot.get("transcript", [])]
             context_for_engine = {
                 "transcript_turns": transcript_turns or [1, 2, 3, 4, 5],
@@ -236,8 +237,15 @@ class GovernanceService:
                 dsa_meta = proposal_for_engine.get("dsa", {})
                 if isinstance(dsa_meta, dict):
                     envelope["strategy"] = dsa_meta.get("strategy")
+                    envelope["strategy_source"] = dsa_meta.get("strategy_source")
+                    envelope["requested_strategy"] = dsa_meta.get("requested_strategy")
+                    envelope["strategy_invalid"] = dsa_meta.get("strategy_invalid")
                     envelope["attempts"] = dsa_meta.get("attempts", [])
                     envelope["requested_profile_id"] = dsa_meta.get("requested_profile_id")
+                    envelope["requested_profile_source"] = dsa_meta.get("requested_profile_source")
+                    envelope["requested_profile_disallowed"] = dsa_meta.get("requested_profile_disallowed")
+                    envelope["session_profile_id"] = dsa_meta.get("session_profile_id")
+                    envelope["scenario_profile_id"] = dsa_meta.get("scenario_profile_id")
                     envelope["selected_profile_id"] = dsa_meta.get("selected_profile_id")
                 outcome["dsa"] = envelope
             action_id = str(outcome.get("action_id", ""))
@@ -404,21 +412,68 @@ class GovernanceService:
             "selected_profile_id": selected,
         }
 
-    def _run_dsa_advice(self, proposal: JSONObject, context_snapshot: JSONObject) -> DSAAdvice | None:
+    def _run_dsa_advice(self, incident_id: str, proposal: JSONObject, context_snapshot: JSONObject) -> DSAAdvice | None:
         action_class = str(proposal.get("action_class", ""))
         if not action_class:
             return None
         dsa_request = proposal.get("dsa", {})
-        requested_profile_id: str | None = None
+        request_profile_id: str | None = None
+        session_profile_id: str | None = None
+        scenario_profile_id: str | None = None
+        request_strategy: str | None = None
+        session_strategy: str | None = None
+        scenario_strategy: str | None = None
         apply_suggestion = False
         if isinstance(dsa_request, dict):
-            requested_profile_id = str(dsa_request.get("profile_id", "")).strip() or None
+            request_profile_id = str(dsa_request.get("profile_id", "")).strip() or None
+            session_profile_id = str(dsa_request.get("session_profile_id", "")).strip() or None
+            scenario_profile_id = str(dsa_request.get("scenario_profile_id", "")).strip() or None
+            request_strategy = str(dsa_request.get("strategy", "")).strip() or None
+            session_strategy = str(dsa_request.get("session_strategy", "")).strip() or None
+            scenario_strategy = str(dsa_request.get("scenario_strategy", "")).strip() or None
             apply_suggestion = bool(dsa_request.get("apply_suggested_payload", False))
+        seeded = self._dsa_overrides_by_incident.get(incident_id, {})
+        if isinstance(seeded, dict):
+            if not session_profile_id:
+                session_profile_id = str(seeded.get("session_profile_id", "")).strip() or None
+            if not scenario_profile_id:
+                scenario_profile_id = str(seeded.get("scenario_profile_id", "")).strip() or None
+            if not session_strategy:
+                session_strategy = str(seeded.get("session_strategy", "")).strip() or None
+            if not scenario_strategy:
+                scenario_strategy = str(seeded.get("scenario_strategy", "")).strip() or None
         route = self.dsa_registry.route_for_action_class(action_class)
-        strategy = str(route.get("strategy", "fallback_chain") or "fallback_chain")
+        route_strategy = str(route.get("strategy", "fallback_chain") or "fallback_chain")
+        strategy = route_strategy
+        strategy_source = "route_default"
+        requested_strategy = request_strategy or session_strategy or scenario_strategy
+        if request_strategy:
+            strategy = request_strategy
+            strategy_source = "request"
+        elif session_strategy:
+            strategy = session_strategy
+            strategy_source = "session"
+        elif scenario_strategy:
+            strategy = scenario_strategy
+            strategy_source = "scenario"
+        strategy_invalid = strategy not in {"fallback_chain", "parallel_best"}
+        if strategy_invalid:
+            strategy = route_strategy
+            strategy_source = "route_default"
         candidate_ids = self.dsa_registry.allowed_profile_ids_for_action_class(action_class)
         if not candidate_ids:
             return None
+        requested_profile_id = request_profile_id or session_profile_id or scenario_profile_id
+        requested_profile_source = (
+            "request"
+            if request_profile_id
+            else "session"
+            if session_profile_id
+            else "scenario"
+            if scenario_profile_id
+            else None
+        )
+        requested_profile_disallowed = bool(requested_profile_id and requested_profile_id not in candidate_ids)
         if requested_profile_id and requested_profile_id in candidate_ids:
             candidate_ids = [requested_profile_id] + [pid for pid in candidate_ids if pid != requested_profile_id]
 
@@ -451,9 +506,16 @@ class GovernanceService:
         if not successful:
             proposal["dsa"] = {
                 "requested_profile_id": requested_profile_id,
+                "requested_profile_source": requested_profile_source,
+                "requested_profile_disallowed": requested_profile_disallowed,
+                "session_profile_id": session_profile_id,
+                "scenario_profile_id": scenario_profile_id,
                 "selected_profile_id": None,
                 "apply_suggested_payload": apply_suggestion,
                 "strategy": strategy,
+                "strategy_source": strategy_source,
+                "requested_strategy": requested_strategy,
+                "strategy_invalid": strategy_invalid,
                 "attempts": attempts,
                 "chosen_payload_source": "client_proposal",
             }
@@ -465,9 +527,16 @@ class GovernanceService:
             proposal["proposer"]["dsa_profile_id"] = advice.profile_id
         proposal["dsa"] = {
             "requested_profile_id": requested_profile_id,
+            "requested_profile_source": requested_profile_source,
+            "requested_profile_disallowed": requested_profile_disallowed,
+            "session_profile_id": session_profile_id,
+            "scenario_profile_id": scenario_profile_id,
             "selected_profile_id": advice.profile_id,
             "apply_suggested_payload": apply_suggestion,
             "strategy": strategy,
+            "strategy_source": strategy_source,
+            "requested_strategy": requested_strategy,
+            "strategy_invalid": strategy_invalid,
             "attempts": attempts,
             "context_hash": advice.context_hash,
             "proposal_hash": advice.proposal_hash,
@@ -533,6 +602,10 @@ class GovernanceService:
         cad_view: JSONObject | None = None,
         location: JSONObject | None = None,
         sop_refs: list[str] | None = None,
+        dsa_session_profile_id: str | None = None,
+        dsa_scenario_profile_id: str | None = None,
+        dsa_session_strategy: str | None = None,
+        dsa_scenario_strategy: str | None = None,
     ) -> JSONObject:
         self.context_cache.set_snapshot(
             incident_id=incident_id,
@@ -541,6 +614,12 @@ class GovernanceService:
             location=location or {},
             sop_refs=sop_refs or ["fire-res-v2"],
         )
+        self._dsa_overrides_by_incident[incident_id] = {
+            "session_profile_id": (str(dsa_session_profile_id).strip() if dsa_session_profile_id else None),
+            "scenario_profile_id": (str(dsa_scenario_profile_id).strip() if dsa_scenario_profile_id else None),
+            "session_strategy": (str(dsa_session_strategy).strip() if dsa_session_strategy else None),
+            "scenario_strategy": (str(dsa_scenario_strategy).strip() if dsa_scenario_strategy else None),
+        }
         self._southbound_bootstrapped.add(incident_id)
         return self.context_cache.get_context_snapshot(incident_id=incident_id, agent_id="seed")
 

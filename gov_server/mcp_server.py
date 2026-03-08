@@ -139,6 +139,10 @@ class MCPHandler(BaseHTTPRequestHandler):
                 cad_view=payload.get("cad_view", {}),
                 location=payload.get("location", {}),
                 sop_refs=payload.get("sop_refs", []),
+                dsa_session_profile_id=payload.get("dsa_session_profile_id"),
+                dsa_scenario_profile_id=payload.get("dsa_scenario_profile_id"),
+                dsa_session_strategy=payload.get("dsa_session_strategy"),
+                dsa_scenario_strategy=payload.get("dsa_scenario_strategy"),
             ),
         }
         handler = routes.get(path)

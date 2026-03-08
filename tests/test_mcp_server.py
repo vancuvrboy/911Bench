@@ -360,6 +360,107 @@ class MCPServerIntegrationTest(unittest.TestCase):
         finally:
             self.service.dsa_registry = original
 
+    def test_dsa_profile_override_precedence_request_session_scenario(self) -> None:
+        _ = self._post(
+            "/mcp/admin/seed_context",
+            {
+                "incident_id": "inc-mcp-dsa-override-precedence",
+                "transcript": [{"turn": 1, "text": "Caller: 711 Override Ave"}],
+                "cad_view": {"location": "Unknown"},
+                "location": {"ani_ali": "711 Override Ave"},
+                "sop_refs": ["fire-res-v2"],
+                "dsa_session_profile_id": "deterministic_911buddy_v1",
+                "dsa_scenario_profile_id": "openai_911buddy_v1",
+            },
+        )
+        proposal = {
+            "action_id": "mcp-dsa-override-precedence-1",
+            "incident_id": "inc-mcp-dsa-override-precedence",
+            "action_class": "cad_update.address",
+            "proposed_payload": {"location": "711 Override Ave"},
+            "evidence_refs": [
+                {
+                    "type": "transcript_span",
+                    "category": "human_communication",
+                    "source": "turn:1",
+                    "content": "711 Override Ave",
+                    "confidence": 0.95,
+                }
+            ],
+            "uncertainty": {"p_correct": 0.95, "conflict": False},
+            "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+            "proposer": {
+                "agent_id": "911buddy",
+                "agent_secret": "dev-911buddy-secret",
+                "agent_role": "dsa",
+                "autonomy_level": "A3",
+            },
+            "dsa": {
+                "profile_id": "deterministic_911buddy_v1",
+                "session_profile_id": "openai_911buddy_v1",
+                "scenario_profile_id": "openai_911buddy_v1",
+                "apply_suggested_payload": False,
+            },
+        }
+        outcome = self._post("/mcp/propose_action", proposal)
+        self.assertEqual(outcome["decision"], "executed")
+        self.assertEqual(outcome["dsa"]["selected_profile_id"], "deterministic_911buddy_v1")
+        self.assertEqual(outcome["dsa"]["requested_profile_source"], "request")
+        self.assertFalse(outcome["dsa"]["requested_profile_disallowed"])
+        self.assertEqual(outcome["dsa"]["session_profile_id"], "openai_911buddy_v1")
+        self.assertEqual(outcome["dsa"]["scenario_profile_id"], "openai_911buddy_v1")
+
+    def test_dsa_session_scenario_strategy_fallback_is_safe(self) -> None:
+        _ = self._post(
+            "/mcp/admin/seed_context",
+            {
+                "incident_id": "inc-mcp-dsa-override-safe-fallback",
+                "transcript": [{"turn": 1, "text": "Caller: 912 Safety Way"}],
+                "cad_view": {"location": "Unknown"},
+                "location": {"ani_ali": "912 Safety Way"},
+                "sop_refs": ["fire-res-v2"],
+                "dsa_session_profile_id": "openai_911buddy_v1",
+                "dsa_scenario_profile_id": "deterministic_911buddy_v1",
+                "dsa_session_strategy": "unsupported_mode",
+                "dsa_scenario_strategy": "parallel_best",
+            },
+        )
+        proposal = {
+            "action_id": "mcp-dsa-override-safe-fallback-1",
+            "incident_id": "inc-mcp-dsa-override-safe-fallback",
+            "action_class": "cad_update.address",
+            "proposed_payload": {"location": "912 Safety Way"},
+            "evidence_refs": [
+                {
+                    "type": "transcript_span",
+                    "category": "human_communication",
+                    "source": "turn:1",
+                    "content": "912 Safety Way",
+                    "confidence": 0.95,
+                }
+            ],
+            "uncertainty": {"p_correct": 0.95, "conflict": False},
+            "read_set": {"record_version": 0, "field_versions": {"location": 0}},
+            "proposer": {
+                "agent_id": "911buddy",
+                "agent_secret": "dev-911buddy-secret",
+                "agent_role": "dsa",
+                "autonomy_level": "A3",
+            },
+            "dsa": {"apply_suggested_payload": False},
+        }
+        outcome = self._post("/mcp/propose_action", proposal)
+        self.assertEqual(outcome["decision"], "executed")
+        self.assertEqual(outcome["dsa"]["requested_profile_source"], "session")
+        self.assertFalse(outcome["dsa"]["requested_profile_disallowed"])
+        self.assertEqual(outcome["dsa"]["selected_profile_id"], "deterministic_911buddy_v1")
+        self.assertEqual(outcome["dsa"]["attempts"][0]["status"], "skipped")
+        self.assertEqual(outcome["dsa"]["attempts"][0]["error"], "profile_disabled")
+        self.assertEqual(outcome["dsa"]["requested_strategy"], "unsupported_mode")
+        self.assertTrue(outcome["dsa"]["strategy_invalid"])
+        self.assertEqual(outcome["dsa"]["strategy"], "fallback_chain")
+        self.assertEqual(outcome["dsa"]["strategy_source"], "route_default")
+
     def test_mcp_rpc_envelope(self) -> None:
         rpc_caps = self._post(
             "/mcp/rpc",

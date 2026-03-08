@@ -146,9 +146,17 @@ DSA registry:
 - DSA profile registry is configured via `policies/dsa_profiles.yaml` by default.
 - `GET /mcp/list_dsa_profiles` returns default profile, available profiles, and optional selection for an `action_class`.
 - `propose_action` accepts optional `dsa` block:
-  - `profile_id`: requested DSA profile
+  - `profile_id`: request-level DSA profile override
+  - `session_profile_id`: session-level profile override (used if `profile_id` absent)
+  - `scenario_profile_id`: scenario-level profile override (used if request/session absent)
+  - `strategy`: request-level strategy override
+  - `session_strategy`: session-level strategy override
+  - `scenario_strategy`: scenario-level strategy override
   - `apply_suggested_payload`: if `true`, apply selected DSA suggestion before enforcement
-  - response includes `dsa` provenance (`profile_id`, `context_hash`, `suggestions`, `chosen_payload_source`)
+  - response includes `dsa` provenance and resolution metadata (`profile_id`, `context_hash`, `suggestions`, `chosen_payload_source`, selected source fields, and safe-fallback flags)
+- `POST /mcp/admin/seed_context` also accepts optional seeded overrides:
+  - `dsa_session_profile_id`, `dsa_scenario_profile_id`
+  - `dsa_session_strategy`, `dsa_scenario_strategy`
 - routing strategies:
   - `fallback_chain`: try profiles in order until one succeeds
   - `parallel_best` (research mode): evaluate multiple profiles and pick highest-score suggestion
