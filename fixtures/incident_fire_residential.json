@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "id": "INC-FIRE-RES-2421",
+  "type": "Fire",
+  "sub_type": "Residential Structure Fire",
+  "location": {
+    "address_line": "2421 Main Street",
+    "city": "Vancouver",
+    "cross_streets": "Main & 24th",
+    "landmarks": "Blue house"
+  },
+  "time_of_day": "Evening",
+  "weather": "Dry",
+  "environment": "Urban residential area",
+  "caller_view": {
+    "vantage_default": "Across street",
+    "what_is_obvious": ["Visible smoke"],
+    "what_is_uncertain": ["How many people inside"],
+    "initial_opening_line": "There is a fire at 2421 Main"
+  },
+  "sensitive_topics": ["children present"],
+  "progression_by_turn": [{"turn_offset": 3, "note": "Flames spreading"}],
+  "first_responder_delay": 8
+}

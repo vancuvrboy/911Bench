@@ -1,0 +1,41 @@
+{
+  "ruleset_id": "NENA-ANS1.107.1-2015-Add2.v1",
+  "version": "003",
+  "normalize_to": 100,
+  "templates": {
+    "COMMON": {
+      "sections": [
+        {
+          "name": "Identification",
+          "answer_set": ["YES", "NO", "REFUSED", "NA"],
+          "section_guidance": "Confirm caller and location",
+          "items": [
+            {
+              "id": "C-001",
+              "question": "Did call-taker request location?",
+              "points": 5,
+              "guidance": "Ask location quickly",
+              "yes_examples": ["Where are you located?"],
+              "no_examples": ["No location request"]
+            }
+          ]
+        }
+      ]
+    },
+    "FIRE": {
+      "version_date": "2026-01-01",
+      "global_guidance": {
+        "YES": "Requirement met",
+        "NO": "Requirement not met",
+        "REFUSED": "Caller refused",
+        "NA": "Not applicable",
+        "cad_vs_interview": "Prefer interview evidence",
+        "rationale_length": "short",
+        "points_rule": "full or zero"
+      },
+      "sections": []
+    },
+    "POLICE": {"version_date": "2026-01-01", "global_guidance": {"YES": "ok", "NO": "no", "REFUSED": "ref", "NA": "na", "cad_vs_interview": "interview", "rationale_length": "short", "points_rule": "full or zero"}, "sections": []},
+    "EMS": {"version_date": "2026-01-01", "global_guidance": {"YES": "ok", "NO": "no", "REFUSED": "ref", "NA": "na", "cad_vs_interview": "interview", "rationale_length": "short", "points_rule": "full or zero"}, "sections": []}
+  }
+}

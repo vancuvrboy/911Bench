@@ -1,0 +1,168 @@
+"""HTTP adapter exposing SIM southbound endpoints for Phase 3 integration."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from dataclasses import dataclass
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any, Callable
+from urllib.parse import urlparse
+
+from sim_server import SimulationEngine
+from sim_server.errors import SimError
+from sim_server.schema_utils import load_json
+
+JSONObject = dict[str, Any]
+
+
+@dataclass
+class AppState:
+    root: Path
+    engine: SimulationEngine
+    auto_approve_checkpoints: bool = True
+
+
+class SouthboundHandler(BaseHTTPRequestHandler):
+    server_version = "911BenchSimSouthbound/0.1"
+
+    @property
+    def app(self) -> AppState:
+        return self.server.app_state  # type: ignore[attr-defined]
+
+    def do_GET(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        if parsed.path == "/healthz":
+            self._send_json({"status": "ok"})
+            return
+        self._send_json({"error": f"unknown_route:{parsed.path}"}, status=HTTPStatus.NOT_FOUND)
+
+    def do_POST(self) -> None:  # noqa: N802
+        try:
+            parsed = urlparse(self.path)
+            payload = self._read_json()
+            routes: dict[str, Callable[[JSONObject], JSONObject]] = {
+                "/admin/load_start": self._admin_load_start,
+                "/plant/get_state_snapshot": lambda body: self.app.engine.plant_get_state_snapshot(
+                    incident_id=str(body.get("incident_id", ""))
+                ),
+                "/plant/get_transcript_since": lambda body: self.app.engine.plant_get_transcript_since(
+                    incident_id=str(body.get("incident_id", "")),
+                    cursor=int(body.get("cursor", 0)),
+                ),
+                "/plant/apply_cad_patch": self._plant_apply_patch,
+                "/plant/emit_event": lambda body: self.app.engine.plant_emit_event(
+                    event=self._normalize_event(body.get("event", {})),
+                ),
+                "/checkpoint/request": self._checkpoint_request,
+                "/checkpoint/poll": lambda body: self.app.engine.checkpoint_poll(
+                    request_id=str(body.get("request_id", ""))
+                ),
+            }
+            handler = routes.get(parsed.path)
+            if handler is None:
+                self._send_json({"error": f"unknown_route:{parsed.path}"}, status=HTTPStatus.NOT_FOUND)
+                return
+            self._send_json(handler(payload))
+        except SimError as exc:
+            self._send_json({"error": exc.code, "message": exc.message}, status=HTTPStatus.BAD_REQUEST)
+        except json.JSONDecodeError:
+            self._send_json({"error": "invalid_json"}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover
+            self._send_json({"error": "server_error", "message": str(exc)}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def _admin_load_start(self, payload: JSONObject) -> JSONObject:
+        root = self.app.root
+        scenario_id = str(payload.get("scenario_id", "phase3_smoke"))
+        caller_fixture = str(payload.get("caller_fixture", "fixtures/caller_cooperative_calm.json"))
+        incident_fixture = str(payload.get("incident_fixture", "fixtures/incident_fire_residential.json"))
+        qa_fixture = str(payload.get("qa_fixture", "fixtures/qaTemplate_003.json"))
+
+        caller = load_json(root / caller_fixture)
+        incident = load_json(root / incident_fixture)
+        qa = load_json(root / qa_fixture)
+
+        loaded = self.app.engine.admin_load_scenario(
+            scenario_id=scenario_id,
+            caller_json=caller,
+            incident_json=incident,
+            qa_template_id=str(qa.get("version", "003")),
+            qa_template_json=qa,
+        )
+        started = self.app.engine.episode_start(loaded["incident_id"])
+        return {"loaded": loaded, "started": started}
+
+    def _checkpoint_request(self, payload: JSONObject) -> JSONObject:
+        incident_id = str(payload.get("incident_id", ""))
+        response = self.app.engine.checkpoint_request(incident_id=incident_id, request=payload)
+        if self.app.auto_approve_checkpoints:
+            self.app.engine.checkpoint_submit(
+                request_id=response["request_id"],
+                decision="approved",
+                rationale="auto_approved_by_phase3_southbound_server",
+            )
+        return response
+
+    def _plant_apply_patch(self, payload: JSONObject) -> JSONObject:
+        return self.app.engine.plant_apply_cad_patch(
+            incident_id=str(payload.get("incident_id", "")),
+            action_id=str(payload.get("idempotency_key", payload.get("action_id", ""))),
+            action_class=str(payload.get("action_class", "")),
+            payload=payload.get("payload", {}) if isinstance(payload.get("payload"), dict) else {},
+            read_set=payload.get("read_set", {}) if isinstance(payload.get("read_set"), dict) else {},
+            policy_id=str(payload.get("policy_id", "")),
+            policy_hash=str(payload.get("policy_hash", payload.get("policy_id", ""))),
+            proposer_agent_id=str(payload.get("proposer_agent_id", "governance")),
+            checkpoint_ref=(str(payload.get("checkpoint_ref")) if payload.get("checkpoint_ref") else None),
+        )
+
+    def _read_json(self) -> JSONObject:
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        if not raw:
+            return {}
+        return json.loads(raw.decode("utf-8"))
+
+    @staticmethod
+    def _normalize_event(event: Any) -> JSONObject:
+        if not isinstance(event, dict):
+            return {}
+        normalized = dict(event)
+        if "event_type" not in normalized and "type" in normalized:
+            normalized["event_type"] = str(normalized.get("type", "system"))
+        return normalized
+
+    def _send_json(self, payload: JSONObject, status: HTTPStatus = HTTPStatus.OK) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def run_server() -> None:
+    parser = argparse.ArgumentParser(description="Run SIM southbound HTTP adapter for governance integration.")
+    parser.add_argument("--root", default=".")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8300)
+    parser.add_argument("--execution-id", default="phase3-sim")
+    parser.add_argument("--auto-approve-checkpoints", action="store_true", default=True)
+    parser.add_argument("--no-auto-approve-checkpoints", dest="auto_approve_checkpoints", action="store_false")
+    args = parser.parse_args()
+
+    app_state = AppState(
+        root=Path(args.root).resolve(),
+        engine=SimulationEngine(execution_id=args.execution_id),
+        auto_approve_checkpoints=bool(args.auto_approve_checkpoints),
+    )
+    httpd = ThreadingHTTPServer((args.host, int(args.port)), SouthboundHandler)
+    httpd.app_state = app_state  # type: ignore[attr-defined]
+    print(f"sim-southbound-server listening on http://{args.host}:{args.port}")
+    httpd.serve_forever()
+
+
+if __name__ == "__main__":
+    run_server()

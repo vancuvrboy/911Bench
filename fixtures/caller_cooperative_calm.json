@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "profile_id": "CALLER-A-COOP-CALM",
+  "profile_name": "Cooperative/Calm",
+  "identity": {
+    "name": "Jamie Lee",
+    "age": 34,
+    "gender": "Female",
+    "pronouns": "she/her",
+    "phone_number": "+1-604-555-0112",
+    "alt_phone_number": "",
+    "home_city": "Vancouver, BC"
+  },
+  "language": {"primary": "English", "other": []},
+  "accessibility": {"hearing": "none", "vision": "none", "mobility": "independent"},
+  "emotional_baseline": "Anxious",
+  "speech": {"rate": "Moderate", "clarity": "High", "disfluencies": ["um"]},
+  "interaction_style": {
+    "interrupts_operator": false,
+    "waits_for_questions": true,
+    "volunteers_key_facts": true,
+    "asks_for_confirmation": true
+  },
+  "instruction_following": {"compliance_level": "High", "stays_on_line": true, "will_meet_responders": true},
+  "disclosure_policy": {
+    "name": "volunteer",
+    "callback_number": "volunteer",
+    "current_location": "volunteer",
+    "unit_suite_floor": "on_ask_once",
+    "relationship_to_incident": "on_ask_once",
+    "people_involved": "on_ask_once",
+    "hazards_or_weapons": "on_ask_once",
+    "sensitive_or_legal_topics": "on_ask_once"
+  },
+  "memory_reliability": {"omission_rate": "Low", "contradiction_rate": "Low", "precision_level": "High"},
+  "opening_style": "Factual one-sentence summary",
+  "example_short_answers": {
+    "name": "Jamie Lee",
+    "callback_number": "+1-604-555-0112",
+    "relationship_to_incident": "Neighbor",
+    "people_involved": "Two adults"
+  }
+}

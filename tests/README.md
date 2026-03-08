@@ -45,3 +45,9 @@ Performance and deterministic replay quality gate:
 ```bash
 python3 -m tests.harness.quality_gate --report tests/results/governance_harness_report.json --max-p95-ms 200
 ```
+
+Phase 3 smoke (governance server wired to real SIM southbound adapter):
+
+```bash
+python3 -m tests.harness.phase3_smoke --root . --output tests/results/phase3_smoke_report.json
+```
