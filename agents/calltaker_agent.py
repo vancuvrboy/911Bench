@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -14,6 +14,8 @@ class CTDecision:
     end_reason: str | None = None
     end_reason_detail: str | None = None
     parse_error: bool = False
+    checkpoint_decisions: list[dict[str, Any]] = field(default_factory=list)
+    call_taker_metadata: dict[str, Any] | None = None
 
 
 class CallTakerAgent:
@@ -40,6 +42,7 @@ class CallTakerAgent:
         caller_text: str,
         cad_state: dict[str, Any],
         system_events: list[dict[str, Any]],
+        pending_checkpoints: list[dict[str, Any]] | None = None,
     ) -> CTDecision:
         self.turn += 1
         caller_low = caller_text.lower()

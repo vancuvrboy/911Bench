@@ -76,6 +76,18 @@
               "error_code": { "type": "string" }
             },
             "additionalProperties": false
+          },
+          "call_taker_metadata": {
+            "type": ["object", "null"],
+            "properties": {
+              "agent_profile_id": { "type": "string" },
+              "source": { "type": "string" },
+              "response_id": { "type": "string" },
+              "fallback": { "type": "boolean" },
+              "fallback_reason": { "type": "string" },
+              "error_code": { "type": "string" }
+            },
+            "additionalProperties": false
           }
         }
       }

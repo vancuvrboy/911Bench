@@ -106,7 +106,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             self._send_json({"status": "ok"})
             return
         if path == "/api/agent/catalog":
-            self._send_json({"profiles": list_profiles()})
+            self._send_json({"profiles": list_profiles(config_root=self.app.agent_config_root)})
             return
         if path == "/api/state":
             self._send_json(self._state_payload())
@@ -311,6 +311,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.calltaker_agent = create_calltaker_agent(
             calltaker_agent_id,
             incident_json=incident,
+            qa_template_json=qa,
             dispatch_enabled=True,
             config_root=self.app.agent_config_root,
         )
@@ -417,10 +418,10 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
             events = self.app.engine.episode_events(incident_id)
             system_events = [ev for ev in events[-30:] if ev.get("event_type") == "system"]
-            caller_manual = is_manual("caller", self.app.caller_agent_id)
-            calltaker_manual = is_manual("calltaker", self.app.calltaker_agent_id)
-            caller_replay = is_replay("caller", self.app.caller_agent_id)
-            calltaker_replay = is_replay("calltaker", self.app.calltaker_agent_id)
+            caller_manual = is_manual("caller", self.app.caller_agent_id, config_root=self.app.agent_config_root)
+            calltaker_manual = is_manual("calltaker", self.app.calltaker_agent_id, config_root=self.app.agent_config_root)
+            caller_replay = is_replay("caller", self.app.caller_agent_id, config_root=self.app.agent_config_root)
+            calltaker_replay = is_replay("calltaker", self.app.calltaker_agent_id, config_root=self.app.agent_config_root)
 
             if caller_manual and calltaker_manual:
                 raise SimError("agent_mode_invalid", "auto_step requires at least one callable or replay agent")
@@ -443,31 +444,107 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 cad_updates = {}
                 end_call = False
                 end_reason = "other"
-                if not caller_manual:
-                    if not self.app.caller_agent:
-                        raise SimError("agent_mode_invalid", "caller profile is not callable")
-                    last_ct = self._latest_calltaker_text(incident_id)
-                    caller_text, caller_meta = self.app.caller_agent.next_turn(call_taker_text=last_ct, system_events=system_events)
                 if not calltaker_manual:
                     if not self.app.calltaker_agent:
                         raise SimError("agent_mode_invalid", "calltaker profile is not callable")
-                    input_caller_text = caller_text if caller_text else self._pending_or_latest_caller_text(incident_id)
+                    input_caller_text = self._pending_or_latest_caller_text(incident_id)
+                    pending_checkpoints = self.app.engine.checkpoint_list(
+                        incident_id=incident_id,
+                        status_filter="pending",
+                        role_filter="call_taker",
+                    ).get("requests", [])
                     decision = self.app.calltaker_agent.next_turn(
                         caller_text=input_caller_text,
                         cad_state=snap.get("cad_state", {}),
                         system_events=system_events,
+                        pending_checkpoints=pending_checkpoints,
                     )
                     calltaker_text = decision.text
                     cad_updates = decision.cad_updates
                     end_call = bool(decision.end_call)
                     end_reason = str(decision.end_reason or "other")
+                    if end_call and not self._end_call_allowed(
+                        incident_id=incident_id,
+                        reason=end_reason,
+                        pending_cad_updates=cad_updates,
+                    ):
+                        # Ask the agent to correct itself in the same turn and
+                        # hide the invalid end-call draft from the transcript.
+                        correction_events = list(system_events)
+                        correction_events.append(
+                            {
+                                "event_type": "system",
+                                "subtype": "generic",
+                                "text": (
+                                    "END_CALL_REJECTED: Call cannot end yet. "
+                                    "If dispatch is triggered, end_call is allowed only after responders_arrived."
+                                ),
+                            }
+                        )
+                        for _ in range(2):
+                            decision = self.app.calltaker_agent.next_turn(
+                                caller_text=input_caller_text,
+                                cad_state=snap.get("cad_state", {}),
+                                system_events=correction_events,
+                                pending_checkpoints=pending_checkpoints,
+                            )
+                            calltaker_text = decision.text
+                            cad_updates = decision.cad_updates
+                            end_call = bool(decision.end_call)
+                            end_reason = str(decision.end_reason or "other")
+                            if not end_call or self._end_call_allowed(
+                                incident_id=incident_id,
+                                reason=end_reason,
+                                pending_cad_updates=cad_updates,
+                            ):
+                                break
+                            correction_events.append(
+                                {
+                                    "event_type": "system",
+                                    "subtype": "generic",
+                                    "text": (
+                                        "END_CALL_REJECTED_AGAIN: continue call and gather/monitor information."
+                                    ),
+                                }
+                            )
+                        if end_call and not self._end_call_allowed(
+                            incident_id=incident_id,
+                            reason=end_reason,
+                            pending_cad_updates=cad_updates,
+                        ):
+                            end_call = False
+                            end_reason = "other"
+                if not caller_manual:
+                    if not self.app.caller_agent:
+                        raise SimError("agent_mode_invalid", "caller profile is not callable")
+                    ct_input = calltaker_text if calltaker_text else self._latest_calltaker_text(incident_id)
+                    caller_text, caller_meta = self.app.caller_agent.next_turn(call_taker_text=ct_input, system_events=system_events)
 
             if not caller_manual:
                 self.app.engine.caller_post_turn(incident_id=incident_id, text=caller_text, metadata=caller_meta)
                 queued_caller_turns += 1
                 last_queued_caller_text = caller_text
             if not calltaker_manual:
-                self.app.engine.calltaker_post_turn(incident_id=incident_id, text=calltaker_text, cad_updates=cad_updates)
+                self.app.engine.calltaker_post_turn(
+                    incident_id=incident_id,
+                    text=calltaker_text,
+                    cad_updates=cad_updates,
+                    call_taker_metadata=getattr(decision, "call_taker_metadata", None) if not calltaker_replay else None,
+                )
+                for cp in getattr(decision, "checkpoint_decisions", []) if not calltaker_replay else []:
+                    if not isinstance(cp, dict):
+                        continue
+                    req_id = str(cp.get("request_id", "")).strip()
+                    cp_decision = str(cp.get("decision", "")).strip()
+                    if not req_id or not cp_decision:
+                        continue
+                    self.app.engine.checkpoint_submit(
+                        request_id=req_id,
+                        decision=cp_decision,
+                        edited_payload=cp.get("edited_payload") if isinstance(cp.get("edited_payload"), dict) else None,
+                        re_escalate_to=str(cp.get("re_escalate_to", "")).strip() or None,
+                        rationale=str(cp.get("rationale", "")).strip() or None,
+                    )
                 posted_calltaker_turns += 1
                 executed += 1
                 if end_call:
@@ -483,9 +560,26 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             "phase": self.app.engine.plant_get_state_snapshot(incident_id).get("episode_phase"),
         }
 
+    def _end_call_allowed(self, incident_id: str, reason: str, pending_cad_updates: dict[str, Any] | None = None) -> bool:
+        snap = self.app.engine.plant_get_state_snapshot(incident_id)
+        cad_state = snap.get("cad_state", {}) if isinstance(snap.get("cad_state"), dict) else {}
+        updates = pending_cad_updates if isinstance(pending_cad_updates, dict) else {}
+        dispatch_now = bool(updates.get("dispatch_triggered", cad_state.get("dispatch_triggered", False)))
+        events = self.app.engine.episode_events(incident_id)
+        responders_arrived = any(
+            ev.get("event_type") == "system" and ev.get("subtype") == "responders_arrived"
+            for ev in events
+        )
+        rsn = str(reason or "").strip() or "other"
+        if dispatch_now and not responders_arrived and rsn != "responders_arrived":
+            return False
+        if rsn == "responders_arrived" and not responders_arrived:
+            return False
+        return True
+
     def _api_qa_evaluate(self) -> dict[str, Any]:
         incident_id = self._incident_or_400()
-        if is_manual("qa", self.app.qa_agent_id) or self.app.qa_agent is None:
+        if is_manual("qa", self.app.qa_agent_id, config_root=self.app.agent_config_root) or self.app.qa_agent is None:
             raise SimError("qa_mode_invalid", "qa agent profile is manual; cannot evaluate")
 
         events = self.app.engine.episode_events(incident_id)
@@ -720,16 +814,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         return str(turns[-1].get("caller", ""))
 
     def _prime_caller_for_manual_calltaker(self, incident_id: str, call_taker_text: str | None = None) -> None:
-        if not is_manual("calltaker", self.app.calltaker_agent_id):
+        if not is_manual("calltaker", self.app.calltaker_agent_id, config_root=self.app.agent_config_root):
             return
-        if is_manual("caller", self.app.caller_agent_id):
+        if is_manual("caller", self.app.caller_agent_id, config_root=self.app.agent_config_root):
             return
         ep = self.app.engine._get_episode(incident_id)  # type: ignore[attr-defined]
         if str(getattr(ep, "pending_caller_text", "") or "").strip():
             return
         events = self.app.engine.episode_events(incident_id)
         system_events = [ev for ev in events[-30:] if ev.get("event_type") == "system"]
-        if is_replay("caller", self.app.caller_agent_id):
+        if is_replay("caller", self.app.caller_agent_id, config_root=self.app.agent_config_root):
             if not self.app.replay_steps or self.app.replay_idx >= len(self.app.replay_steps):
                 return
             step = self.app.replay_steps[self.app.replay_idx]

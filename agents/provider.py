@@ -1,4 +1,27 @@
-"""Role-based agent provider registry for deterministic/replay/OpenAI agents."""
+"""Role-based agent provider registry for deterministic/replay/OpenAI agents.
+
+Developer extension guide (plug-and-play profiles):
+1) Add or update a profile YAML in `agents/config/` using the naming pattern:
+   - `<role>.<profile_id>.yaml` where role is one of: `caller`, `calltaker`, `qa`.
+2) Put profile metadata in YAML (single source of truth for non-builtin profiles):
+   - `id`, `role`, `provider`, `mode`, `adapter`, `description`
+   - plus runtime fields such as `model`, `temperature`, prompt text/files, limits, strategy flags.
+3) Provider discovery:
+   - `list_profiles()` and `get_profile()` load builtins + YAML profiles.
+   - Builtins (`manual`, `deterministic_v1`, `replay`) remain code defaults for safety.
+4) Adapter dispatch:
+   - `create_caller_agent`, `create_calltaker_agent`, `create_qa_agent`
+     select implementation by YAML `adapter` value.
+   - If you can reuse an existing adapter, no Python changes are needed.
+5) Adding a new adapter type (Python change required once):
+   - Implement a class and constructor helper.
+   - Add one adapter mapping branch in the relevant `create_*_agent` function.
+   - After that, new profiles can use that adapter via YAML only.
+6) Tool-capable agents:
+   - Define tool schemas in class method `_tool_specs()`.
+   - Implement behavior in `_exec_tool()`.
+   - Execute tool loop inside `next_turn()`.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +48,7 @@ class AgentProfile:
     mode: str
 
 
-_CATALOG: list[AgentProfile] = [
+_BUILTIN_CATALOG: list[AgentProfile] = [
     AgentProfile(
         id="manual",
         role="caller",
@@ -52,15 +75,6 @@ _CATALOG: list[AgentProfile] = [
         temperature=0.0,
         description="Replay pre-recorded caller outputs",
         mode="replay",
-    ),
-    AgentProfile(
-        id="openai_gpt4o_mini_v1",
-        role="caller",
-        provider="openai",
-        model="gpt-4o-mini",
-        temperature=0.3,
-        description="OpenAI caller adapter (Responses API)",
-        mode="callable",
     ),
     AgentProfile(
         id="manual",
@@ -90,15 +104,6 @@ _CATALOG: list[AgentProfile] = [
         mode="replay",
     ),
     AgentProfile(
-        id="openai_gpt4o_mini_v1",
-        role="calltaker",
-        provider="openai",
-        model="gpt-4o-mini",
-        temperature=0.0,
-        description="OpenAI call-taker adapter (JSON action output)",
-        mode="callable",
-    ),
-    AgentProfile(
         id="manual",
         role="qa",
         provider="builtin",
@@ -125,35 +130,148 @@ _CATALOG: list[AgentProfile] = [
         description="Replay QA score fixture if available",
         mode="replay",
     ),
-    AgentProfile(
-        id="openai_gpt4o_mini_v1",
-        role="qa",
-        provider="openai",
-        model="gpt-4o-mini",
-        temperature=0.0,
-        description="OpenAI QA adapter (JSON rubric scoring)",
-        mode="callable",
-    ),
 ]
 
 
-def list_profiles() -> list[dict[str, Any]]:
-    return [asdict(p) for p in _CATALOG]
+def _default_config_root() -> Path:
+    return (Path(__file__).resolve().parent / "config").resolve()
 
 
-def get_profile(role: str, agent_id: str) -> AgentProfile:
-    for p in _CATALOG:
+def _yaml_load(path: Path) -> dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        return _minimal_yaml_load(path)
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception:
+        return _minimal_yaml_load(path)
+    return raw if isinstance(raw, dict) else {}
+
+
+def _parse_scalar(value: str) -> Any:
+    v = value.strip()
+    if not v:
+        return ""
+    if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+        return v[1:-1]
+    low = v.lower()
+    if low in {"true", "false"}:
+        return low == "true"
+    if low in {"null", "none"}:
+        return None
+    try:
+        if "." in v:
+            return float(v)
+        return int(v)
+    except Exception:
+        return v
+
+
+def _minimal_yaml_load(path: Path) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return out
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            i += 1
+            continue
+        if line.startswith(" ") or ":" not in line:
+            i += 1
+            continue
+        key, rest = line.split(":", 1)
+        key = key.strip()
+        rest = rest.strip()
+        if rest == "|":
+            i += 1
+            block: list[str] = []
+            while i < n:
+                nxt = lines[i]
+                if not nxt:
+                    block.append("")
+                    i += 1
+                    continue
+                if not nxt.startswith(" "):
+                    break
+                block.append(nxt[2:] if nxt.startswith("  ") else nxt.lstrip())
+                i += 1
+            out[key] = "\n".join(block).rstrip()
+            continue
+        out[key] = _parse_scalar(rest)
+        i += 1
+    return out
+
+
+def _load_external_profiles(config_root: str | Path | None) -> list[AgentProfile]:
+    base = Path(config_root).resolve() if config_root is not None else _default_config_root()
+    if not base.exists() or not base.is_dir():
+        return []
+    out: list[AgentProfile] = []
+    for path in sorted(base.glob("*.yaml")):
+        stem = path.stem
+        if "." not in stem:
+            continue
+        role_from_name, id_from_name = stem.split(".", 1)
+        if role_from_name not in {"caller", "calltaker", "qa"}:
+            continue
+        cfg = _yaml_load(path)
+        role = str(cfg.get("role", role_from_name))
+        if role not in {"caller", "calltaker", "qa"}:
+            continue
+        profile_id = str(cfg.get("id", id_from_name))
+        provider = str(cfg.get("provider", "openai"))
+        mode = str(cfg.get("mode", "callable"))
+        model = str(cfg.get("model", "-"))
+        try:
+            temperature = float(cfg.get("temperature", 0.0))
+        except Exception:
+            temperature = 0.0
+        description = str(cfg.get("description", f"Configured {role} profile"))
+        out.append(
+            AgentProfile(
+                id=profile_id,
+                role=role,
+                provider=provider,
+                model=model,
+                temperature=temperature,
+                description=description,
+                mode=mode,
+            )
+        )
+    return out
+
+
+def _build_catalog(config_root: str | Path | None = None) -> list[AgentProfile]:
+    by_key: dict[tuple[str, str], AgentProfile] = {(p.role, p.id): p for p in _BUILTIN_CATALOG}
+    for p in _load_external_profiles(config_root):
+        by_key[(p.role, p.id)] = p
+    # Keep stable ordering by role then id for UI.
+    return sorted(by_key.values(), key=lambda p: (p.role, p.id))
+
+
+def list_profiles(*, config_root: str | Path | None = None) -> list[dict[str, Any]]:
+    return [asdict(p) for p in _build_catalog(config_root=config_root)]
+
+
+def get_profile(role: str, agent_id: str, *, config_root: str | Path | None = None) -> AgentProfile:
+    for p in _build_catalog(config_root=config_root):
         if p.role == role and p.id == agent_id:
             return p
     raise ValueError(f"unknown agent profile: role={role}, id={agent_id}")
 
 
-def is_replay(role: str, agent_id: str) -> bool:
-    return get_profile(role, agent_id).mode == "replay"
+def is_replay(role: str, agent_id: str, *, config_root: str | Path | None = None) -> bool:
+    return get_profile(role, agent_id, config_root=config_root).mode == "replay"
 
 
-def is_manual(role: str, agent_id: str) -> bool:
-    return get_profile(role, agent_id).mode == "manual"
+def is_manual(role: str, agent_id: str, *, config_root: str | Path | None = None) -> bool:
+    return get_profile(role, agent_id, config_root=config_root).mode == "manual"
 
 
 def create_caller_agent(
@@ -163,29 +281,48 @@ def create_caller_agent(
     *,
     config_root: str | Path | None = None,
 ) -> CallerAgent | Any | None:
-    profile = get_profile("caller", agent_id)
+    profile = get_profile("caller", agent_id, config_root=config_root)
     if profile.mode in {"manual", "replay"}:
         return None
     if profile.provider == "builtin":
         return CallerAgent(caller_json=caller_json, incident_json=incident_json, temperature=profile.temperature)
     cfg = _load_agent_config(config_root=config_root, role="caller", agent_id=agent_id)
-    return _create_openai_caller(profile, caller_json, incident_json, agent_config=cfg)
+    adapter = str(cfg.get("adapter", "openai_caller_responses")).strip().lower()
+    if adapter in {"openai_caller_responses", "openai_responses"}:
+        return _create_openai_caller(profile, caller_json, incident_json, agent_config=cfg)
+    raise ValueError(f"unsupported caller adapter: {adapter}")
 
 
 def create_calltaker_agent(
     agent_id: str,
     incident_json: dict[str, Any],
+    qa_template_json: dict[str, Any] | None = None,
     *,
     config_root: str | Path | None = None,
     **kwargs: Any,
 ) -> CallTakerAgent | Any | None:
-    profile = get_profile("calltaker", agent_id)
+    profile = get_profile("calltaker", agent_id, config_root=config_root)
     if profile.mode in {"manual", "replay"}:
         return None
     if profile.provider == "builtin":
         return CallTakerAgent(incident_json=incident_json, temperature=profile.temperature, **kwargs)
+    # OpenAI call-taker profiles run incident-blind by default. They infer details
+    # through caller dialogue and tool-returned runtime state, not seed injection.
+    runtime_incident: dict[str, Any] = {}
     cfg = _load_agent_config(config_root=config_root, role="calltaker", agent_id=agent_id)
-    return _create_openai_calltaker(profile, incident_json, agent_config=cfg)
+    adapter = str(cfg.get("adapter", "")).strip().lower()
+    if not adapter:
+        adapter = "openai_calltaker_synthetic" if "synthetic" in profile.id else "openai_calltaker_json"
+    if adapter in {"openai_calltaker_synthetic", "openai_synthetic"}:
+        return _create_openai_synthetic_calltaker(
+            profile,
+            runtime_incident,
+            qa_template_json=qa_template_json or {},
+            agent_config=cfg,
+        )
+    if adapter in {"openai_calltaker_json", "openai_chat_json"}:
+        return _create_openai_calltaker(profile, runtime_incident, agent_config=cfg)
+    raise ValueError(f"unsupported calltaker adapter: {adapter}")
 
 
 def create_qa_agent(
@@ -195,28 +332,24 @@ def create_qa_agent(
     config_root: str | Path | None = None,
     **kwargs: Any,
 ) -> QAEvaluatorAgent | Any | None:
-    profile = get_profile("qa", agent_id)
+    profile = get_profile("qa", agent_id, config_root=config_root)
     if profile.mode in {"manual", "replay"}:
         return None
     if profile.provider == "builtin":
         return QAEvaluatorAgent(qa_template_json=qa_template_json, temperature=profile.temperature, **kwargs)
     cfg = _load_agent_config(config_root=config_root, role="qa", agent_id=agent_id)
-    return _create_openai_qa(profile, qa_template_json, agent_config=cfg)
+    adapter = str(cfg.get("adapter", "openai_qa_json")).strip().lower()
+    if adapter in {"openai_qa_json", "openai_chat_json"}:
+        return _create_openai_qa(profile, qa_template_json, agent_config=cfg)
+    raise ValueError(f"unsupported qa adapter: {adapter}")
 
 
 def _load_agent_config(config_root: str | Path | None, role: str, agent_id: str) -> dict[str, Any]:
-    if config_root is None:
-        return {}
-    base = Path(config_root)
+    base = Path(config_root).resolve() if config_root is not None else _default_config_root()
     path = base / f"{role}.{agent_id}.yaml"
     if not path.exists():
         return {}
-    try:
-        import yaml  # type: ignore
-    except Exception:
-        return {}
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return raw if isinstance(raw, dict) else {}
+    return _yaml_load(path)
 
 
 def _create_openai_client() -> Any:
@@ -386,14 +519,61 @@ class OpenAICallTakerAgent:
             )
         )
         self.incident_json = incident_json
+        self.opening_greeting = str(
+            cfg.get(
+                "opening_greeting",
+                "This is 911. Do you need Police, Fire or Ambulance?",
+            )
+        ).strip()
+        self._opening_sent = False
         self._fallback = CallTakerAgent(incident_json=incident_json, temperature=temperature)
 
-    def next_turn(self, caller_text: str, cad_state: dict[str, Any], system_events: list[dict[str, Any]]) -> CTDecision:
+    def _fallback_decision(
+        self,
+        *,
+        caller_text: str,
+        cad_state: dict[str, Any],
+        system_events: list[dict[str, Any]],
+        reason: str,
+        error_code: str | None = None,
+    ) -> CTDecision:
+        d = self._fallback.next_turn(caller_text=caller_text, cad_state=cad_state, system_events=system_events)
+        md: dict[str, Any] = {
+            "agent_profile_id": "openai_calltaker_json",
+            "source": "builtin_fallback",
+            "fallback": True,
+            "fallback_reason": reason,
+        }
+        if error_code:
+            md["error_code"] = error_code
+        d.call_taker_metadata = md
+        return d
+
+    def next_turn(
+        self,
+        caller_text: str,
+        cad_state: dict[str, Any],
+        system_events: list[dict[str, Any]],
+        pending_checkpoints: list[dict[str, Any]] | None = None,
+    ) -> CTDecision:
         try:
+            if not self._opening_sent and not str(caller_text or "").strip():
+                self._opening_sent = True
+                return CTDecision(
+                    text=self.opening_greeting,
+                    cad_updates={},
+                    end_call=False,
+                    call_taker_metadata={
+                        "agent_profile_id": "openai_calltaker_json",
+                        "source": "openai",
+                        "fallback": False,
+                    },
+                )
             prompt = (
                 f"caller_text={caller_text}\n"
                 f"cad_state={json.dumps(cad_state)}\n"
                 f"system_events={json.dumps(system_events[-3:])}\n"
+                f"pending_checkpoints={json.dumps(pending_checkpoints or [])}\n"
             )
             resp = self.client.chat.completions.create(
                 model=self.model,
@@ -412,9 +592,463 @@ class OpenAICallTakerAgent:
                 cad_updates=obj.get("cad_updates") if isinstance(obj.get("cad_updates"), dict) else {},
                 end_call=bool(obj.get("end_call", False)),
                 end_reason=str(obj.get("end_reason")) if obj.get("end_reason") else None,
+                end_reason_detail=str(obj.get("end_reason_detail")) if obj.get("end_reason_detail") else None,
+                checkpoint_decisions=(
+                    obj.get("checkpoint_decisions") if isinstance(obj.get("checkpoint_decisions"), list) else []
+                ),
+                call_taker_metadata={
+                    "agent_profile_id": "openai_calltaker_json",
+                    "source": "openai",
+                    "fallback": False,
+                },
             )
+        except Exception as exc:
+            return self._fallback_decision(
+                caller_text=caller_text,
+                cad_state=cad_state,
+                system_events=system_events,
+                reason="exception",
+                error_code=type(exc).__name__,
+            )
+
+
+class OpenAISyntheticCallTakerAgent:
+    def __init__(
+        self,
+        model: str,
+        temperature: float,
+        incident_json: dict[str, Any],
+        qa_template_json: dict[str, Any],
+        agent_config: dict[str, Any] | None = None,
+    ) -> None:
+        cfg = agent_config or {}
+        self.client = _create_openai_client()
+        self.model = str(cfg.get("model", model))
+        self.temperature = float(cfg.get("temperature", temperature))
+        self.max_completion_tokens = int(cfg.get("max_completion_tokens", 500))
+        self.use_previous_response_id = bool(cfg.get("use_previous_response_id", True))
+        self.max_history_turns = int(cfg.get("max_history_turns", 20))
+        self.enable_map_tool = bool(cfg.get("enable_map_tool", True))
+        self.checkpoint_strategy = str(cfg.get("checkpoint_strategy", "llm_evaluate")).strip().lower()
+        self.opening_greeting = str(
+            cfg.get(
+                "opening_greeting",
+                "This is 911. Do you need Police, Fire or Ambulance?",
+            )
+        ).strip()
+        self.system_prompt = str(
+            cfg.get(
+                "system_prompt",
+                "You are a synthetic 911 call-taker agent. Use tools to gather SOP/CAD/QA/map context and decide CAD updates. "
+                "Return strict JSON with keys text(str), cad_updates(object), end_call(bool), end_reason(str|null), "
+                "end_reason_detail(str|null), checkpoint_decisions(array).",
+            )
+        )
+        self.incident_json = incident_json
+        self.qa_template_json = qa_template_json
+        self._fallback = CallTakerAgent(incident_json=incident_json, temperature=temperature)
+        self._pending_updates: dict[str, Any] = {}
+        self._pending_end_call: dict[str, Any] = {}
+        self._pending_checkpoint_decisions: list[dict[str, Any]] = []
+        self._pending_checkpoints: list[dict[str, Any]] = []
+        self._opening_sent = False
+        self._seeded = False
+        self.previous_response_id: str | None = None
+        self._history: list[dict[str, str]] = []
+
+    def _fallback_decision(
+        self,
+        *,
+        caller_text: str,
+        cad_state: dict[str, Any],
+        system_events: list[dict[str, Any]],
+        reason: str,
+        error_code: str | None = None,
+    ) -> CTDecision:
+        d = self._fallback.next_turn(caller_text=caller_text, cad_state=cad_state, system_events=system_events)
+        md: dict[str, Any] = {
+            "agent_profile_id": "openai_synthetic_v1",
+            "source": "builtin_fallback",
+            "fallback": True,
+            "fallback_reason": reason,
+        }
+        if error_code:
+            md["error_code"] = error_code
+        d.call_taker_metadata = md
+        return d
+
+    def next_turn(
+        self,
+        caller_text: str,
+        cad_state: dict[str, Any],
+        system_events: list[dict[str, Any]],
+        pending_checkpoints: list[dict[str, Any]] | None = None,
+    ) -> CTDecision:
+        self._pending_updates = {}
+        self._pending_end_call = {}
+        self._pending_checkpoint_decisions = []
+        self._pending_checkpoints = list(pending_checkpoints or [])
+        try:
+            if not self._opening_sent and not str(caller_text or "").strip():
+                self._opening_sent = True
+                return CTDecision(
+                    text=self.opening_greeting,
+                    cad_updates={},
+                    end_call=False,
+                    call_taker_metadata={
+                        "agent_profile_id": "openai_synthetic_v1",
+                        "source": "openai_synthetic",
+                        "fallback": False,
+                    },
+                )
+            if self._pending_checkpoints and self.checkpoint_strategy in {"auto_approve", "auto-deny", "auto_deny"}:
+                auto_decision = "approved" if self.checkpoint_strategy == "auto_approve" else "denied"
+                checkpoint_decisions = [
+                    {"request_id": str(req.get("request_id", "")), "decision": auto_decision}
+                    for req in self._pending_checkpoints
+                    if str(req.get("request_id", "")).strip()
+                ]
+                return CTDecision(
+                    text="Please stay on the line while I continue processing your emergency.",
+                    cad_updates={},
+                    checkpoint_decisions=checkpoint_decisions,
+                    call_taker_metadata={
+                        "agent_profile_id": "openai_synthetic_v1",
+                        "source": "openai_synthetic",
+                        "fallback": False,
+                    },
+                )
+            turn_packet = self._turn_packet(caller_text, cad_state, system_events, self._pending_checkpoints)
+            kwargs: dict[str, Any] = {
+                "model": self.model,
+                "temperature": self.temperature,
+                "max_output_tokens": self.max_completion_tokens,
+            }
+            if self.use_previous_response_id and self._seeded and self.previous_response_id:
+                kwargs["previous_response_id"] = self.previous_response_id
+                kwargs["input"] = [{"role": "user", "content": turn_packet}]
+            else:
+                input_msgs: list[dict[str, Any]] = [
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": self._seed_packet()},
+                ]
+                if self._history:
+                    input_msgs.extend(self._history[-(self.max_history_turns * 2) :])
+                input_msgs.append({"role": "user", "content": turn_packet})
+                kwargs["input"] = input_msgs
+
+            resp = self.client.responses.create(**kwargs)
+            response_id = str(getattr(resp, "id", "")).strip()
+            self.previous_response_id = response_id or self.previous_response_id
+            self._seeded = True
+            raw_text = self._extract_text(resp)
+            parsed = self._parse_ct_json(raw_text)
+            text_out = str(parsed.get("text", "") or "Acknowledged.")
+            self._history.extend(
+                [
+                    {"role": "user", "content": turn_packet},
+                    {"role": "assistant", "content": text_out},
+                ]
+            )
+            cad_updates = parsed.get("cad_updates") if isinstance(parsed.get("cad_updates"), dict) else {}
+            merged_updates = dict(self._pending_updates)
+            merged_updates.update(cad_updates)
+            parsed_checkpoint_decisions = (
+                parsed.get("checkpoint_decisions")
+                if isinstance(parsed.get("checkpoint_decisions"), list)
+                else []
+            )
+            merged_checkpoint_decisions = list(self._pending_checkpoint_decisions)
+            merged_checkpoint_decisions.extend(parsed_checkpoint_decisions)
+            end_call = bool(parsed.get("end_call", False) or self._pending_end_call.get("end_call", False))
+            end_reason = parsed.get("end_reason") if parsed.get("end_reason") else self._pending_end_call.get("end_reason")
+            end_reason_detail = (
+                parsed.get("end_reason_detail")
+                if parsed.get("end_reason_detail")
+                else self._pending_end_call.get("end_reason_detail")
+            )
+            return CTDecision(
+                text=text_out,
+                cad_updates=merged_updates,
+                end_call=end_call,
+                end_reason=str(end_reason) if end_reason else None,
+                end_reason_detail=str(end_reason_detail) if end_reason_detail else None,
+                checkpoint_decisions=[d for d in merged_checkpoint_decisions if isinstance(d, dict)],
+                call_taker_metadata={
+                    "agent_profile_id": "openai_synthetic_v1",
+                    "source": "openai_responses",
+                    "response_id": response_id,
+                    "fallback": False,
+                },
+            )
+        except Exception as exc:
+            return self._fallback_decision(
+                caller_text=caller_text,
+                cad_state=cad_state,
+                system_events=system_events,
+                reason="exception",
+                error_code=type(exc).__name__,
+            )
+
+    def _seed_packet(self) -> str:
+        payload = {
+            "qa_template": self.qa_template_json,
+            "tool_contract": {
+                "write_cad": "Provide CAD updates in cad_updates object.",
+                "end_call": "Set end_call=true and provide end_reason/end_reason_detail when call should close.",
+                "checkpoints": "Return checkpoint_decisions array when pending checkpoints exist.",
+            },
+        }
+        return (
+            "Use this structured seed data for internal behavior only. "
+            "Do not quote it to the caller.\n"
+            f"seed_json={json.dumps(payload)}"
+        )
+
+    def _turn_packet(
+        self,
+        caller_text: str,
+        cad_state: dict[str, Any],
+        system_events: list[dict[str, Any]],
+        pending_checkpoints: list[dict[str, Any]],
+    ) -> str:
+        payload = {
+            "caller_text": caller_text,
+            "cad_state": cad_state,
+            "system_events": system_events[-8:],
+            "pending_checkpoints": pending_checkpoints,
+        }
+        return json.dumps(payload)
+
+    def _extract_text(self, resp: Any) -> str:
+        output_text = str(getattr(resp, "output_text", "") or "").strip()
+        if output_text:
+            return output_text
+        output = getattr(resp, "output", None)
+        if isinstance(output, list):
+            chunks: list[str] = []
+            for item in output:
+                content = getattr(item, "content", None)
+                if isinstance(content, list):
+                    for part in content:
+                        txt = str(getattr(part, "text", "") or "").strip()
+                        if txt:
+                            chunks.append(txt)
+            joined = "\n".join(chunks).strip()
+            if joined:
+                return joined
+        return ""
+
+    def _parse_ct_json(self, raw: str) -> dict[str, Any]:
+        text = str(raw or "").strip()
+        if not text:
+            return {}
+        try:
+            obj = json.loads(text)
+            return obj if isinstance(obj, dict) else {}
         except Exception:
-            return self._fallback.next_turn(caller_text=caller_text, cad_state=cad_state, system_events=system_events)
+            m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+            if not m:
+                return {"text": text, "cad_updates": {}, "end_call": False}
+            try:
+                obj = json.loads(m.group(0))
+                return obj if isinstance(obj, dict) else {}
+            except Exception:
+                return {"text": text, "cad_updates": {}, "end_call": False}
+
+    def _tool_specs(self) -> list[dict[str, Any]]:
+        tools: list[dict[str, Any]] = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_sop",
+                    "description": "Read SOP snippets by incident_type and step.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "incident_type": {"type": "string"},
+                            "step": {"type": "string"},
+                        },
+                        "required": [],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_cad_state",
+                    "description": "Read the current CAD state snapshot.",
+                    "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_qa_template",
+                    "description": "Read QA template sections/items.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"section": {"type": "string"}},
+                        "required": [],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "write_cad",
+                    "description": "Queue CAD field updates to apply this turn.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"updates": {"type": "object"}},
+                        "required": ["updates"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "end_call",
+                    "description": "Flag call termination.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "reason": {"type": "string"},
+                            "reason_detail": {"type": "string"},
+                        },
+                        "required": ["reason"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_checkpoints",
+                    "description": "List pending checkpoint requests for the call-taker role.",
+                    "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "submit_checkpoint",
+                    "description": "Queue a checkpoint decision for submission.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "request_id": {"type": "string"},
+                            "decision": {"type": "string"},
+                            "edited_payload": {"type": "object"},
+                            "rationale": {"type": "string"},
+                            "re_escalate_to": {"type": "string"},
+                        },
+                        "required": ["request_id", "decision"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+        ]
+        if self.enable_map_tool:
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "view_map",
+                        "description": "Inspect approximate map/location context for the incident.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "query": {"type": "string"},
+                            },
+                            "required": [],
+                            "additionalProperties": False,
+                        },
+                    },
+                }
+            )
+        return tools
+
+    def _exec_tool(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        cad_state: dict[str, Any],
+        system_events: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if tool_name == "read_sop":
+            incident_type = str(args.get("incident_type") or self.incident_json.get("type", "Fire")).title()
+            step = str(args.get("step", "initial")).lower()
+            return {"snippets": self._sop_snippets(incident_type, step)}
+        if tool_name == "read_cad_state":
+            return {"cad_state": cad_state, "system_events_recent": system_events[-5:]}
+        if tool_name == "read_qa_template":
+            section = str(args.get("section", "")).strip().upper()
+            templates = self.qa_template_json.get("templates", {})
+            if section and isinstance(templates, dict):
+                return {"section": section, "template": templates.get(section)}
+            return {"templates": templates}
+        if tool_name == "view_map":
+            loc = self.incident_json.get("location", {}) if isinstance(self.incident_json.get("location"), dict) else {}
+            return {
+                "query": str(args.get("query", "")),
+                "location": {
+                    "address_line": loc.get("address_line"),
+                    "city": loc.get("city"),
+                    "lat": loc.get("lat"),
+                    "lon": loc.get("lon"),
+                    "accuracy_m": loc.get("accuracy_m"),
+                },
+            }
+        if tool_name == "write_cad":
+            updates = args.get("updates") if isinstance(args.get("updates"), dict) else {}
+            self._pending_updates.update(updates)
+            return {"queued_updates": updates}
+        if tool_name == "end_call":
+            reason = str(args.get("reason", "")).strip() or "other"
+            detail = str(args.get("reason_detail", "")).strip() or None
+            self._pending_end_call = {"end_call": True, "end_reason": reason, "end_reason_detail": detail}
+            return {"queued_end_call": self._pending_end_call}
+        if tool_name == "list_checkpoints":
+            return {"pending_checkpoints": self._pending_checkpoints}
+        if tool_name == "submit_checkpoint":
+            req_id = str(args.get("request_id", "")).strip()
+            decision = str(args.get("decision", "")).strip()
+            if not req_id or not decision:
+                return {"error": "request_id_and_decision_required"}
+            decision_obj: dict[str, Any] = {"request_id": req_id, "decision": decision}
+            if isinstance(args.get("edited_payload"), dict):
+                decision_obj["edited_payload"] = args["edited_payload"]
+            if args.get("rationale"):
+                decision_obj["rationale"] = str(args["rationale"])
+            if args.get("re_escalate_to"):
+                decision_obj["re_escalate_to"] = str(args["re_escalate_to"])
+            self._pending_checkpoint_decisions.append(decision_obj)
+            return {"queued_checkpoint_decision": decision_obj}
+        return {"error": f"unknown_tool:{tool_name}"}
+
+    def _sop_snippets(self, incident_type: str, step: str) -> list[dict[str, str]]:
+        by_type = {
+            "Fire": [
+                {"step": "initial", "title": "Fire Initial Triage", "text": "Confirm exact location, occupants, flame/smoke conditions, hazards."},
+                {"step": "dispatch", "title": "Fire Dispatch Guidance", "text": "Dispatch immediately if active fire is confirmed; maintain line safety guidance."},
+            ],
+            "Police": [
+                {"step": "initial", "title": "Police Initial Triage", "text": "Assess immediate threat, weapons, suspect description, scene safety."},
+                {"step": "dispatch", "title": "Police Dispatch Guidance", "text": "Prioritize active violence and officer safety information."},
+            ],
+            "Ems": [
+                {"step": "initial", "title": "EMS Initial Triage", "text": "Assess consciousness, breathing, bleeding, patient age/condition."},
+                {"step": "dispatch", "title": "EMS Dispatch Guidance", "text": "Dispatch for life threats; provide immediate pre-arrival instructions."},
+            ],
+        }
+        snippets = by_type.get(incident_type.title(), [])
+        if step == "all":
+            return snippets
+        return [row for row in snippets if row.get("step") == step] or snippets[:1]
 
 
 class OpenAIQAEvaluatorAgent:
@@ -480,6 +1114,22 @@ def _create_openai_calltaker(profile: AgentProfile, incident_json: dict[str, Any
         model=profile.model,
         temperature=profile.temperature,
         incident_json=incident_json,
+        agent_config=agent_config,
+    )
+
+
+def _create_openai_synthetic_calltaker(
+    profile: AgentProfile,
+    incident_json: dict[str, Any],
+    *,
+    qa_template_json: dict[str, Any],
+    agent_config: dict[str, Any],
+) -> OpenAISyntheticCallTakerAgent:
+    return OpenAISyntheticCallTakerAgent(
+        model=profile.model,
+        temperature=profile.temperature,
+        incident_json=incident_json,
+        qa_template_json=qa_template_json,
         agent_config=agent_config,
     )
 

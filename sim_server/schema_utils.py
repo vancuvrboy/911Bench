@@ -106,6 +106,11 @@ def validate_event_against_schema_like_rules(event: dict[str, Any]) -> list[str]
         for key in event["caller_metadata"].keys():
             if key not in allowed_meta_keys:
                 errors.append(f"caller_metadata_unknown:{key}")
+    if event_type == "conversation" and isinstance(event.get("call_taker_metadata"), dict):
+        allowed_ct_keys = {"agent_profile_id", "source", "response_id", "fallback", "fallback_reason", "error_code"}
+        for key in event["call_taker_metadata"].keys():
+            if key not in allowed_ct_keys:
+                errors.append(f"call_taker_metadata_unknown:{key}")
     return errors
 
 
