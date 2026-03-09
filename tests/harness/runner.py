@@ -47,6 +47,10 @@ class Harness:
             data = json.loads(case_file.read_text(encoding="utf-8"))
             case_list = data if isinstance(data, list) else [data]
             for case in case_list:
+                if not self._is_governance_case(case):
+                    # Ignore non-governance manifests (e.g., SIM experiment configs)
+                    # that may coexist under tests/cases.
+                    continue
                 category = case.get("category", "unknown")
                 if include_categories and category not in include_categories:
                     continue
@@ -54,6 +58,16 @@ class Harness:
 
         self._write_outputs(results)
         return results
+
+    @staticmethod
+    def _is_governance_case(case: Any) -> bool:
+        if not isinstance(case, dict):
+            return False
+        mode = case.get("mode")
+        if mode == "batch_policy_comparison":
+            return isinstance(case.get("batch"), dict) and "registry_file" in case
+        required = {"policy_file", "registry_file", "action_proposal"}
+        return required.issubset(case.keys())
 
     def _run_case(self, case: dict[str, Any]) -> CaseResult:
         start = time.perf_counter()
