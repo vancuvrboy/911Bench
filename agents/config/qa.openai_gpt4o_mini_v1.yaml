@@ -1,5 +1,27 @@
+id: openai_gpt4o_mini_v1
+role: qa
+provider: openai
+mode: callable
+adapter: openai_qa_json
+description: OpenAI QA adapter (JSON rubric scoring)
 model: gpt-4o-mini
 temperature: 0.0
+use_responses_api: true
+max_output_tokens: 900
+parse_retry_max: 2
 system_prompt: |
-  You are a QA evaluator for 911 calls.
-  Return strict JSON matching the deterministic QA output schema.
+  Score this 9-1-1 call using the provided QA template.
+  Rules:
+  - Follow each item's answer_set and points constraints.
+  - Interview-style items are scored from transcript turns only.
+  - CAD/record-style items are scored from call_record/tool_calls evidence only.
+  - REFUSED means caller explicitly refused after being asked.
+  - NA means clearly not applicable to incident context; do not use NA to excuse missing work.
+  - points_awarded must be numeric in [0, points_possible] (partial credit not allowed).
+  - If answer is YES then award full points_possible. If answer is NO/REFUSED/NA then award 0.
+  - Rationales are concise (1-2 sentences) and should reference turn numbers or tool calls when useful.
+  - Ignore simulation metadata not present in transcript/tool_calls/system_events.
+  Return JSON only (no markdown, no prose).
+  Required top-level fields:
+  evaluator_agent_id, qa_template_id, incident_type, sections_applied, items,
+  total_points_awarded, total_points_possible, normalized_score, notes.

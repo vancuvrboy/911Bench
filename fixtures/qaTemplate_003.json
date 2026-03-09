@@ -6,36 +6,498 @@
     "COMMON": {
       "sections": [
         {
-          "name": "Identification",
-          "answer_set": ["YES", "NO", "REFUSED", "NA"],
-          "section_guidance": "Confirm caller and location",
+          "name": "Interview Questions (Common)",
+          "answer_set": [
+            "YES",
+            "NO",
+            "REFUSED",
+            "NA"
+          ],
           "items": [
             {
-              "id": "C-001",
-              "question": "Did call-taker request location?",
-              "points": 5,
-              "guidance": "Ask location quickly",
-              "yes_examples": ["Where are you located?"],
-              "no_examples": ["No location request"]
+              "id": "location_verified",
+              "question": "Verified address / location",
+              "points": 20
+            },
+            {
+              "id": "incident_type_coded",
+              "question": "Correct incident/problem type identified/coded",
+              "points": 20
+            },
+            {
+              "id": "caller_name_obtained",
+              "question": "Caller name obtained",
+              "points": 10
+            },
+            {
+              "id": "caller_phone_obtained",
+              "question": "Callback phone number obtained/verified",
+              "points": 10
+            }
+          ]
+        },
+        {
+          "name": "Telephone Protocol / Skills",
+          "answer_set": [
+            "YES",
+            "NO",
+            "NA"
+          ],
+          "items": [
+            {
+              "id": "dispatch_protocol_correct",
+              "question": "Dispatch decision followed protocol",
+              "points": 5
+            },
+            {
+              "id": "call_control_professional",
+              "question": "Maintained control & professional tone",
+              "points": 5
             }
           ]
         }
       ]
     },
     "FIRE": {
-      "version_date": "2026-01-01",
+      "version_date": "2025-07-22",
       "global_guidance": {
-        "YES": "Requirement met",
-        "NO": "Requirement not met",
-        "REFUSED": "Caller refused",
-        "NA": "Not applicable",
-        "cad_vs_interview": "Prefer interview evidence",
-        "rationale_length": "short",
-        "points_rule": "full or zero"
+        "YES": "Requirement clearly met according to Addendum 3 intent.",
+        "NO": "Requirement not met or insufficiently addressed.",
+        "REFUSED": "Caller explicitly refused to answer after being asked.",
+        "NA": "Clearly not applicable to this incident (do not use NA to excuse missing work).",
+        "cad_vs_interview": "Interview Questions are judged on the call-taker’s questioning and the caller’s responses in the transcript. Telephone Protocol/Skills cover tone, control, reassurance, and adherence to procedures.",
+        "rationale_length": "Keep each rationale to 1–2 sentences citing the relevant turn(s) or record entries.",
+        "points_rule": "Award between 0 and the item’s points value based on adequacy; partial credit is allowed."
       },
-      "sections": []
+      "sections": [
+        {
+          "name": "Interview Questions (Fire)",
+          "answer_set": [
+            "YES",
+            "NO",
+            "REFUSED",
+            "NA"
+          ],
+          "section_guidance": "Did the call-taker solicit and obtain the critical information listed? Judge by transcript content. The call record is not available so do not deduct points if there is no evidence of entries into the call record.",
+          "items": [
+            {
+              "id": "location_verified",
+              "question": "Verified address / location of the fire",
+              "points": 10,
+              "guidance": "Caller’s location must be obtained AND confirmed (repeat-back or explicit verification).",
+              "yes_examples": [
+                "CT: \"Confirm the address is 2421 Main Street?\" Caller: \"Yes.\"",
+                "Caller gives location; CT repeats it back and records it."
+              ],
+              "no_examples": [
+                "Caller blurts address once; CT never confirms or acknowledges.",
+                "CT assumes location from caller’s hint without verification."
+              ]
+            },
+            {
+              "id": "caller_name_obtained",
+              "question": "Caller name obtained",
+              "points": 5,
+              "guidance": "Ask for and document the caller’s name. Nickname is acceptable if caller refuses full name.",
+              "yes_examples": [
+                "CT: \"What is your name?\" Caller: \"Jane Thompson.\"",
+                "Caller initially hesitant, CT gently asks again and records 'Unknown' only after refusal."
+              ],
+              "no_examples": [
+                "Name never requested.",
+                "CT accepts 'I’d rather not say' without documenting refusal (mark REFUSED instead of YES)."
+              ]
+            },
+            {
+              "id": "caller_phone_obtained",
+              "question": "Callback phone number obtained/verified",
+              "points": 5,
+              "guidance": "A callback number must be asked for and either provided or refused.",
+              "yes_examples": [
+                "CT: \"What’s a good number to reach you?\" Caller provides number and CT confirms digits.",
+                "Number auto-populated but CT verifies it verbally."
+              ],
+              "no_examples": [
+                "No request for callback number.",
+                "Number given but CT never confirms and it’s clearly incomplete."
+              ]
+            },
+            {
+              "id": "fire_occupants_asked",
+              "question": "Asked if anyone is inside/trapped",
+              "points": 20,
+              "guidance": "Explicitly determine if people are inside or accounted for. Addendum 3 treats this as critical life-safety info.",
+              "yes_examples": [
+                "CT: \"Is anyone still inside the building?\" Caller: \"I think two people are upstairs!\"",
+                "CT clarifies unknown status: \"You’re not sure if anyone is inside, correct?\""
+              ],
+              "no_examples": [
+                "Never asks about occupants.",
+                "Assumes 'no one inside' from caller panic without asking."
+              ]
+            },
+            {
+              "id": "fire_exposures_asked",
+              "question": "Asked about exposures/adjacent structures/vehicles",
+              "points": 15,
+              "guidance": "Assess risk to nearby structures/vehicles (exposures) when applicable.",
+              "yes_examples": [
+                "CT: \"Are there buildings or cars close to the fire that could catch?\"",
+                "CT asks if flames are near propane tanks on the porch next door."
+              ],
+              "no_examples": [
+                "Large urban setting with obvious exposures but CT never inquires.",
+                "Caller mentions cars nearby; CT ignores it."
+              ]
+            },
+            {
+              "id": "fire_hazards_asked",
+              "question": "Asked about hazards (gas cylinders, chemicals, power lines)",
+              "points": 10,
+              "guidance": "Identify hazardous materials or utilities that could endanger responders or public.",
+              "yes_examples": [
+                "CT asks about gas, chemicals, power lines, oxygen tanks.",
+                "Caller unsure; CT documents 'unknown hazards'."
+              ],
+              "no_examples": [
+                "CT never screens for hazards.",
+                "Obvious mention of propane tank ignored."
+              ]
+            },
+            {
+              "id": "fire_status_updates",
+              "question": "Captured ongoing status (spread, smoke, floor, changes)",
+              "points": 10,
+              "guidance": "Obtain and relay significant changes until responders arrive (e.g., spread to roof, explosions).",
+              "yes_examples": [
+                "CT: \"Is the fire getting bigger or changing?\" Caller: \"Flames now on second floor.\"",
+                "CT periodically checks status until units arrive."
+              ],
+              "no_examples": [
+                "No follow-up after initial report despite delay.",
+                "Fire clearly worsening but CT stops questioning."
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Telephone Protocol / Skills",
+          "answer_set": [
+            "YES",
+            "NO",
+            "NA"
+          ],
+          "section_guidance": "Evaluate demeanor, control, reassurance, and adherence to procedural steps.",
+          "items": [
+            {
+              "id": "dispatch_protocol_correct",
+              "question": "Dispatch decision followed protocol",
+              "points": 5,
+              "guidance": "Dispatch (or not) according to policy; ensure timeliness (don’t delay critical dispatch).",
+              "yes_examples": [
+                "CT dispatches promptly after core info (address/type).",
+                "No dispatch for prank/non-emergency per SOP."
+              ],
+              "no_examples": [
+                "Delayed dispatch while asking non-critical questions.",
+                "Dispatched when protocol says not to (e.g., clear misuse)."
+              ]
+            },
+            {
+              "id": "call_control_professional",
+              "question": "Maintained control & professional tone",
+              "points": 5,
+              "guidance": "Calm, respectful, gives clear instructions, redirects rambling callers.",
+              "yes_examples": [
+                "CT reassures caller, gives concise directions, stays calm.",
+                "Politely but firmly stops prank behavior."
+              ],
+              "no_examples": [
+                "CT becomes argumentative or uses slang/sarcasm.",
+                "Allows caller to derail call, losing critical info."
+              ]
+            }
+          ]
+        }
+      ]
     },
-    "POLICE": {"version_date": "2026-01-01", "global_guidance": {"YES": "ok", "NO": "no", "REFUSED": "ref", "NA": "na", "cad_vs_interview": "interview", "rationale_length": "short", "points_rule": "full or zero"}, "sections": []},
-    "EMS": {"version_date": "2026-01-01", "global_guidance": {"YES": "ok", "NO": "no", "REFUSED": "ref", "NA": "na", "cad_vs_interview": "interview", "rationale_length": "short", "points_rule": "full or zero"}, "sections": []}
+    "POLICE": {
+      "sections": [
+        {
+          "name": "Interview Questions (Police)",
+          "answer_set": [
+            "YES",
+            "NO",
+            "REFUSED",
+            "NA"
+          ],
+          "section_guidance": "Focus on life-safety first (injuries, weapons, threats), then solvability (descriptions, direction of travel). Judge by transcript content. The call record is not available so do not deduct points if there is no evidence of entries into the call record.",
+          "items": [
+            {
+              "id": "location_verified",
+              "question": "Verified address / location of occurrence",
+              "points": 10,
+              "guidance": "Obtain and confirm exact location; include apartment/unit, landmarks, or intersection as needed.",
+              "yes_examples": [
+                "CT verifies '221B Baker St, Apt 3' with caller.",
+                "Caller gives intersection; CT repeats back and confirms."
+              ],
+              "no_examples": [
+                "Caller mentions 'near the park' and CT accepts without clarifying.",
+                "Address spoken once but never confirmed."
+              ]
+            },
+            {
+              "id": "caller_name_obtained",
+              "question": "Caller/complainant name obtained",
+              "points": 5,
+              "guidance": "Request and document the caller’s name; accept initials if full name refused.",
+              "yes_examples": [
+                "CT: 'Your name?' Caller: 'Alex Chen' recorded.",
+                "Caller refuses full name; CT records 'Alex (refused surname)'."
+              ],
+              "no_examples": [
+                "Never asks for name.",
+                "Accepts refusal without noting REFUSED."
+              ]
+            },
+            {
+              "id": "caller_phone_obtained",
+              "question": "Callback phone number obtained/verified",
+              "points": 5,
+              "guidance": "Ask for and confirm a reachable number; verify auto-populated ANI when appropriate.",
+              "yes_examples": [
+                "CT repeats digits to confirm.",
+                "ANI displayed; CT verifies with caller."
+              ],
+              "no_examples": [
+                "No callback requested.",
+                "Digits recorded with obvious error not corrected."
+              ]
+            },
+            {
+              "id": "police_weapons_asked",
+              "question": "Asked if weapons are involved / suspect armed",
+              "points": 20,
+              "guidance": "Explicitly ask about weapons and immediate threats to life; document type and location of weapon if known.",
+              "yes_examples": [
+                "'Are there any weapons involved?' Caller: 'He has a knife.'",
+                "CT clarifies location: 'Where is the gun now?'"
+              ],
+              "no_examples": [
+                "Never screens for weapons.",
+                "Caller mentions 'gun' but CT does not follow up."
+              ]
+            },
+            {
+              "id": "police_suspect_description",
+              "question": "Suspect/vehicle description and/or direction of travel",
+              "points": 20,
+              "guidance": "Gather descriptors using standard order: person (sex, race, clothing, distinguishing features) and vehicle (make/model/color/plate) and DOT.",
+              "yes_examples": [
+                "'Blue Honda Civic, plate ABC123, headed east on 4th.'",
+                "Clothing: 'Black hoodie, jeans, red backpack.'"
+              ],
+              "no_examples": [
+                "No descriptors captured.",
+                "Only 'a guy ran' documented without any details."
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Telephone Protocol / Skills",
+          "answer_set": [
+            "YES",
+            "NO",
+            "NA"
+          ],
+          "section_guidance": "Evaluate control, safety guidance, and adherence to procedures (e.g., do-not-confront instructions).",
+          "items": [
+            {
+              "id": "dispatch_protocol_correct",
+              "question": "Dispatch decision followed protocol (timely/appropriate)",
+              "points": 5,
+              "guidance": "Dispatch promptly when in-progress or life-safety issues exist; obtain minimal key info first.",
+              "yes_examples": [
+                "Units dispatched after address/type then continued questioning.",
+                "No dispatch for non-police matter per policy."
+              ],
+              "no_examples": [
+                "Delayed dispatch for descriptors while assault ongoing.",
+                "Dispatched contrary to policy."
+              ]
+            },
+            {
+              "id": "call_control_professional",
+              "question": "Maintained control & professional tone throughout",
+              "points": 5,
+              "guidance": "Keep caller safe: advise to avoid confrontation, stay on line when appropriate, use calm tone.",
+              "yes_examples": [
+                "'Do not approach, stay inside with doors locked.'",
+                "CT de-escalates agitated caller."
+              ],
+              "no_examples": [
+                "CT becomes argumentative.",
+                "Gives unsafe advice to pursue suspect."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "EMS": {
+      "sections": [
+        {
+          "name": "Interview Questions (Medical)",
+          "answer_set": [
+            "YES",
+            "NO",
+            "REFUSED",
+            "NA"
+          ],
+          "section_guidance": "Prioritize ABCs (airway, breathing, circulation), chief complaint, and scene safety; judge by transcript content.  The call record is not available so do not deduct points if there is no evidence of entries into the call record.",
+          "items": [
+            {
+              "id": "location_verified",
+              "question": "Verified address / location of patient(s)",
+              "points": 10,
+              "guidance": "Confirm exact patient location (unit/entrance code/landmarks).",
+              "yes_examples": [
+                "CT confirms 'Unit 1205, buzzer 1234'.",
+                "Repeats rural location landmarks to confirm."
+              ],
+              "no_examples": [
+                "Building given but no unit confirmed.",
+                "No verification of location."
+              ]
+            },
+            {
+              "id": "caller_name_obtained",
+              "question": "Caller name obtained",
+              "points": 5,
+              "guidance": "Request and document caller’s name (or refusal).",
+              "yes_examples": [
+                "Name recorded after polite ask.",
+                "Refusal documented as REFUSED."
+              ],
+              "no_examples": [
+                "Never requested.",
+                "Implicitly assumed from caller ID."
+              ]
+            },
+            {
+              "id": "caller_phone_obtained",
+              "question": "Callback phone number obtained/verified",
+              "points": 5,
+              "guidance": "Obtain and verify callback; needed for pre-arrival coaching continuity.",
+              "yes_examples": [
+                "Digits read back to confirm.",
+                "ANI verified verbally."
+              ],
+              "no_examples": [
+                "Not requested.",
+                "Wrong digits not corrected."
+              ]
+            },
+            {
+              "id": "ems_conscious_asked",
+              "question": "Asked about consciousness / responsiveness (A&O)",
+              "points": 10,
+              "guidance": "Assess AVPU/A&O where feasible; capture responsiveness and orientation.",
+              "yes_examples": [
+                "'Is he awake and speaking?'",
+                "Clarifies 'only responsive to pain'."
+              ],
+              "no_examples": [
+                "No consciousness check.",
+                "Ambiguous 'he's out' without follow-up."
+              ]
+            },
+            {
+              "id": "ems_breathing_asked",
+              "question": "Asked about breathing / airway status",
+              "points": 10,
+              "guidance": "Determine if breathing is normal/abnormal or absent; identify choking.",
+              "yes_examples": [
+                "'Is she breathing normally?'",
+                "Identifies agonal respirations."
+              ],
+              "no_examples": [
+                "No breathing assessment.",
+                "Assumes breathing status without asking."
+              ]
+            },
+            {
+              "id": "ems_bleeding_serious_asked",
+              "question": "Assessed for severe bleeding / other life threats",
+              "points": 8,
+              "guidance": "Ask about major external bleeding, severe pain, stroke signs when relevant.",
+              "yes_examples": [
+                "'Is there heavy bleeding?'",
+                "Screens for FAST stroke signs when slurred speech mentioned."
+              ],
+              "no_examples": [
+                "Ignores mention of blood.",
+                "No assessment of obvious life threats."
+              ]
+            },
+            {
+              "id": "ems_patient_count",
+              "question": "Number of patients determined",
+              "points": 7,
+              "guidance": "Establish single vs. multiple patients early for resource sizing.",
+              "yes_examples": [
+                "'How many people are hurt?'",
+                "Clarifies second patient found."
+              ],
+              "no_examples": [
+                "Never asks about additional patients.",
+                "Assumes single patient without confirming."
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Telephone Protocol / Skills",
+          "answer_set": [
+            "YES",
+            "NO",
+            "NA"
+          ],
+          "section_guidance": "Evaluate provision of evidence-based pre-arrival instructions (PAIs), reassurance, and re-assessment cadence.",
+          "items": [
+            {
+              "id": "ems_care_instructions",
+              "question": "Provided appropriate pre-arrival care instructions",
+              "points": 5,
+              "guidance": "Deliver PAIs appropriate to complaint (e.g., CPR, bleeding control, airway positioning).",
+              "yes_examples": [
+                "Gives hands-only CPR steps for 'not breathing'.",
+                "Advises direct pressure for severe bleeding."
+              ],
+              "no_examples": [
+                "No PAIs given when indicated.",
+                "Incorrect or unsafe instructions."
+              ]
+            },
+            {
+              "id": "ems_reassessment",
+              "question": "Reassessed/updated until responders arrived",
+              "points": 5,
+              "guidance": "Monitor changes and give additional instructions while waiting; keep caller on line as appropriate.",
+              "yes_examples": [
+                "Periodic checks on breathing status.",
+                "Updates CAD with deteriorations."
+              ],
+              "no_examples": [
+                "No follow-up after initial info.",
+                "Hangs up prematurely despite evolving situation."
+              ]
+            }
+          ]
+        }
+      ]
+    }
   }
 }

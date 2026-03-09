@@ -56,6 +56,10 @@
           <select id="qaAgentId"></select>
         </label>
         <label>Max Turns <input id="maxTurns" type="number" value="20" min="3" max="100" /></label>
+        <label class="checkbox-label">
+          <input id="autoQaOnSeal" type="checkbox" checked />
+          Auto QA On Call End
+        </label>
       </div>
       <button id="loadStartBtn">Load + Start Episode</button>
       <div id="setupStatus" class="status"></div>
@@ -131,6 +135,7 @@
           <select id="endReason">
             <option value="responders_arrived">responders_arrived</option>
             <option value="resolved_no_dispatch">resolved_no_dispatch</option>
+            <option value="prank_call">prank_call</option>
             <option value="caller_disconnected">caller_disconnected</option>
             <option value="other">other</option>
           </select>

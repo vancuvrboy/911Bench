@@ -80,7 +80,7 @@ system_prompt: |
     "text": string,
     "cad_updates": object,
     "end_call": boolean,
-    "end_reason": string|null,
+    "end_reason": "responders_arrived"|"resolved_no_dispatch"|"prank_call"|"caller_disconnected"|"other"|null,
     "end_reason_detail": string|null,
     "checkpoint_decisions": array
   }

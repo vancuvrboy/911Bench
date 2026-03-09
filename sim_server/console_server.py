@@ -30,6 +30,7 @@ from agents import (
 )
 from sim_server import SimulationEngine
 from sim_server.errors import SimError
+from sim_server.qa_pipeline import build_qa_input, build_qa_reports
 from sim_server.schema_utils import load_json
 
 
@@ -53,10 +54,14 @@ class ConsoleState:
     artifacts_root: Path | None = None
     run_id: str = ""
     auto_save_on_end: bool = True
+    auto_qa_on_seal: bool = True
     saved_artifacts: list[dict[str, Any]] = field(default_factory=list)
     replay_steps: list[dict[str, Any]] | None = None
     replay_idx: int = 0
     last_qa_score: dict[str, Any] | None = None
+    last_qa_input: dict[str, Any] | None = None
+    last_qa_report_markdown: str | None = None
+    last_qa_report_html: str | None = None
 
 
 class ConsoleHandler(BaseHTTPRequestHandler):
@@ -272,6 +277,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         caller_agent_id = str(payload.get("caller_agent_id", payload.get("caller_agent_mode", "manual")))
         calltaker_agent_id = str(payload.get("calltaker_agent_id", payload.get("calltaker_agent_mode", "manual")))
         qa_agent_id = str(payload.get("qa_agent_id", payload.get("qa_agent_mode", "deterministic_v1")))
+        auto_qa_on_seal = bool(payload.get("auto_qa_on_seal", True))
 
         caller = load_json(root / caller_fixture)
         incident = load_json(root / incident_fixture)
@@ -302,6 +308,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.caller_agent_id = caller_agent_id
         self.app.calltaker_agent_id = calltaker_agent_id
         self.app.qa_agent_id = qa_agent_id
+        self.app.auto_qa_on_seal = auto_qa_on_seal
         self.app.caller_agent = create_caller_agent(
             caller_agent_id,
             caller_json=caller,
@@ -325,6 +332,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.replay_steps = self._load_replay_for_console(scenario_id, incident)
         self.app.replay_idx = 0
         self.app.last_qa_score = None
+        self.app.last_qa_input = None
+        self.app.last_qa_report_markdown = None
+        self.app.last_qa_report_html = None
         self._send_json(
             {
                 "loaded": loaded,
@@ -376,6 +386,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 "calltaker": self.app.calltaker_agent_id,
                 "qa": self.app.qa_agent_id,
             },
+            "runtime_options": {
+                "auto_qa_on_seal": bool(self.app.auto_qa_on_seal),
+            },
             "pending_turn": int(getattr(ep, "awaiting_caller_for_turn", 0)),
             "pending_caller_text": str(getattr(ep, "pending_caller_text", "") or ""),
             "pending_caller_metadata": getattr(ep, "pending_caller_metadata", None),
@@ -395,6 +408,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 "event_count": len(events),
             },
             "last_qa_score": self.app.last_qa_score,
+            "last_qa_available": bool(self.app.last_qa_score),
             "artifacts": {
                 "run_id": self.app.run_id,
                 "auto_save_on_end": bool(self.app.auto_save_on_end),
@@ -571,6 +585,9 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             for ev in events
         )
         rsn = str(reason or "").strip() or "other"
+        allowed_reasons = {"responders_arrived", "resolved_no_dispatch", "caller_disconnected", "prank_call", "other"}
+        if rsn not in allowed_reasons:
+            return False
         if dispatch_now and not responders_arrived and rsn != "responders_arrived":
             return False
         if rsn == "responders_arrived" and not responders_arrived:
@@ -581,12 +598,8 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         incident_id = self._incident_or_400()
         if is_manual("qa", self.app.qa_agent_id, config_root=self.app.agent_config_root) or self.app.qa_agent is None:
             raise SimError("qa_mode_invalid", "qa agent profile is manual; cannot evaluate")
-
-        events = self.app.engine.episode_events(incident_id)
-        incident_type = str((self.app.incident_seed or {}).get("type", "Unknown"))
-        qa_score = self.app.qa_agent.evaluate(events=events, incident_type=incident_type)
-        self.app.last_qa_score = qa_score
-        return {"status": "ok", "qa_score": qa_score}
+        self._evaluate_qa(incident_id)
+        return {"status": "ok", "qa_score": self.app.last_qa_score}
 
     def _agent_config_manifest(self) -> dict[str, Any]:
         manifest: dict[str, Any] = {}
@@ -657,6 +670,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             "console_runtime": {
                 "run_id": self.app.run_id,
                 "auto_save_on_end": bool(self.app.auto_save_on_end),
+                "auto_qa_on_seal": bool(self.app.auto_qa_on_seal),
                 "agent_profiles": {
                     "caller": self.app.caller_agent_id,
                     "calltaker": self.app.calltaker_agent_id,
@@ -673,11 +687,15 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if self.app.artifacts_root is None:
             raise SimError("artifacts_root_unset", "artifact root is not configured")
         self._ensure_run_documents()
+        self._auto_evaluate_qa_if_needed(incident_id)
         saved = self.app.engine.save_artifact_bundle(
             incident_id=incident_id,
             output_root=self.app.artifacts_root,
             run_id=self.app.run_id,
             qa_score=self.app.last_qa_score,
+            qa_input=self.app.last_qa_input,
+            qa_report_markdown=self.app.last_qa_report_markdown,
+            qa_report_html=self.app.last_qa_report_html,
             extra_meta=self._artifact_extra_meta(incident_id) | {"save_reason": reason},
         )
         if self.app.saved_artifacts is None:
@@ -692,9 +710,43 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         phase = self.app.engine.plant_get_state_snapshot(incident_id).get("episode_phase")
         if phase != "sealed":
             return
+        self._auto_evaluate_qa_if_needed(incident_id)
         if self.app.saved_artifacts and self.app.saved_artifacts[-1].get("incident_id") == incident_id:
             return
         self._save_current_episode_artifacts(incident_id=incident_id, reason=reason)
+
+    def _auto_evaluate_qa_if_needed(self, incident_id: str) -> None:
+        if not self.app.auto_qa_on_seal:
+            return
+        if self.app.last_qa_score is not None:
+            return
+        if is_manual("qa", self.app.qa_agent_id, config_root=self.app.agent_config_root):
+            return
+        if self.app.qa_agent is None:
+            return
+        try:
+            self._evaluate_qa(incident_id)
+        except Exception:
+            return
+
+    def _evaluate_qa(self, incident_id: str) -> None:
+        if self.app.qa_agent is None:
+            raise SimError("qa_mode_invalid", "qa agent profile is not callable")
+        events = self.app.engine.episode_events(incident_id)
+        incident_type = str((self.app.incident_seed or {}).get("type", "Unknown"))
+        qa_template = self.app.qa_seed or {}
+        qa_input = build_qa_input(events=events, qa_template=qa_template, incident_type=incident_type)
+        qa_score = self.app.qa_agent.evaluate(events=events, incident_type=incident_type, qa_input=qa_input)
+        reports = build_qa_reports(
+            qa_score=qa_score,
+            qa_template=qa_template,
+            scenario_id=str(self.app.scenario_id or "unknown"),
+            incident_id=incident_id,
+        )
+        self.app.last_qa_input = qa_input
+        self.app.last_qa_score = qa_score
+        self.app.last_qa_report_markdown = reports["markdown"]
+        self.app.last_qa_report_html = reports["html"]
 
     def _api_artifacts_save(self, payload: dict[str, Any]) -> dict[str, Any]:
         incident_id = str(payload.get("incident_id", "")).strip() or self._incident_or_400()

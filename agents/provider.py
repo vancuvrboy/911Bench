@@ -1063,6 +1063,9 @@ class OpenAIQAEvaluatorAgent:
         self.client = _create_openai_client()
         self.model = str(cfg.get("model", model))
         self.temperature = float(cfg.get("temperature", temperature))
+        self.max_output_tokens = int(cfg.get("max_output_tokens", 900))
+        self.parse_retry_max = int(cfg.get("parse_retry_max", 2))
+        self.use_responses_api = bool(cfg.get("use_responses_api", True))
         self.system_prompt = str(
             cfg.get(
                 "system_prompt",
@@ -1072,24 +1075,217 @@ class OpenAIQAEvaluatorAgent:
         self.qa_template_json = qa_template_json
         self._fallback = QAEvaluatorAgent(qa_template_json=qa_template_json, temperature=temperature)
 
-    def evaluate(self, events: list[dict[str, Any]], incident_type: str) -> dict[str, Any]:
+    def evaluate(
+        self,
+        events: list[dict[str, Any]],
+        incident_type: str,
+        qa_input: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        packet = qa_input if isinstance(qa_input, dict) else self._build_packet(events=events, incident_type=incident_type)
+        prompt = json.dumps(packet)
+        last_error_code = "unknown"
+        retries = 0
+        for attempt in range(max(1, self.parse_retry_max + 1)):
+            try:
+                if self.use_responses_api:
+                    resp = self.client.responses.create(
+                        model=self.model,
+                        temperature=self.temperature,
+                        max_output_tokens=self.max_output_tokens,
+                        input=[
+                            {"role": "system", "content": self.system_prompt},
+                            {"role": "user", "content": prompt},
+                        ],
+                    )
+                    response_id = str(getattr(resp, "id", "")).strip()
+                    raw = self._extract_text(resp)
+                else:
+                    resp = self.client.chat.completions.create(
+                        model=self.model,
+                        temperature=self.temperature,
+                        messages=[
+                            {"role": "system", "content": self.system_prompt},
+                            {"role": "user", "content": prompt},
+                        ],
+                    )
+                    response_id = ""
+                    raw = str(resp.choices[0].message.content or "").strip()
+                parsed = self._parse_json_payload(raw)
+                normalized = self._normalize_score_payload(parsed, incident_type=incident_type)
+                normalized["parse_retry_count"] = retries
+                normalized["evaluator_model"] = self.model
+                normalized["evaluator_source"] = "openai_responses" if self.use_responses_api else "openai_chat"
+                normalized["evaluator_response_id"] = response_id
+                normalized["fallback"] = False
+                return normalized
+            except Exception as exc:
+                last_error_code = type(exc).__name__
+                retries = attempt + 1
+                continue
+        fallback = self._fallback.evaluate(events=events, incident_type=incident_type)
+        fallback["evaluator_source"] = "builtin_fallback"
+        fallback["fallback"] = True
+        fallback["error_code"] = last_error_code
+        return fallback
+
+    def _build_packet(self, *, events: list[dict[str, Any]], incident_type: str) -> dict[str, Any]:
+        transcript = self._conversation_rows(events)
+        return {
+            "incident_type": incident_type,
+            "template": self.qa_template_json,
+            "transcript": transcript,
+            "required_output_fields": [
+                "evaluator_agent_id",
+                "qa_template_id",
+                "incident_type",
+                "sections_applied",
+                "items",
+                "total_points_awarded",
+                "total_points_possible",
+                "normalized_score",
+                "notes",
+            ],
+        }
+
+    def _parse_json_payload(self, raw: str) -> dict[str, Any]:
+        text = str(raw or "").strip()
+        if not text:
+            raise ValueError("empty_qa_output")
         try:
-            prompt = f"incident_type={incident_type}\nevents={json.dumps(events[-30:])}\n"
-            resp = self.client.chat.completions.create(
-                model=self.model,
-                temperature=self.temperature,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            raw = (resp.choices[0].message.content or "").strip()
-            parsed = json.loads(raw)
-            if not isinstance(parsed, dict) or "normalized_score" not in parsed:
-                raise ValueError("invalid_openai_qa_payload")
-            return parsed
+            obj = json.loads(text)
+            if isinstance(obj, dict):
+                return obj
         except Exception:
-            return self._fallback.evaluate(events=events, incident_type=incident_type)
+            pass
+        m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if not m:
+            raise ValueError("invalid_qa_json")
+        obj = json.loads(m.group(0))
+        if not isinstance(obj, dict):
+            raise ValueError("invalid_qa_json_object")
+        return obj
+
+    def _normalize_score_payload(self, obj: dict[str, Any], incident_type: str) -> dict[str, Any]:
+        if "normalized_score" not in obj:
+            raise ValueError("qa_missing_normalized_score")
+        template_idx = self._template_item_index(str(incident_type).upper())
+        items = obj.get("items") if isinstance(obj.get("items"), list) else []
+        if not items and isinstance(obj.get("rows"), list):
+            items = obj.get("rows")
+        norm_items: list[dict[str, Any]] = []
+        answer_enum = {"YES", "NO", "REFUSED", "NA"}
+        awarded = 0.0
+        possible = 0.0
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            item_id = str(it.get("id", "unknown"))
+            tpl = template_idx.get(item_id, {})
+            pp_raw = it.get("points_possible", it.get("max_points", tpl.get("points", 0.0)))
+            pa_raw = it.get("points_awarded", it.get("awarded", 0.0))
+            pp = float(pp_raw or 0.0)
+            pa = float(pa_raw or 0.0)
+            ans = str(it.get("answer", "")).strip().upper()
+            if ans not in answer_enum:
+                if pp <= 0:
+                    ans = "NA"
+                elif pa <= 0:
+                    ans = "NO"
+                else:
+                    ans = "YES"
+            # Resolve inconsistent model outputs deterministically:
+            # if positive points are awarded, treat as YES regardless of answer token.
+            if pp > 0 and pa > 0 and ans != "YES":
+                ans = "YES"
+            if pp > 0 and pa <= 0 and ans == "YES":
+                ans = "NO"
+            # Enforce binary/no-partial scoring policy:
+            # YES => full points; NO/REFUSED/NA => 0
+            pa = pp if ans == "YES" else 0.0
+            awarded += pa
+            possible += pp
+            norm_items.append(
+                {
+                    "id": item_id,
+                    "answer": ans,
+                    "points_awarded": pa,
+                    "points_possible": pp,
+                    "rationale": str(it.get("rationale", "")),
+                    "evidence_turns": [int(x) for x in it.get("evidence_turns", []) if isinstance(x, (int, float))],
+                }
+            )
+        total_awarded = awarded
+        total_possible = possible
+        normalize_to = float(self.qa_template_json.get("normalize_to", 100) or 100.0)
+        normalized = (total_awarded / total_possible * normalize_to) if total_possible > 0 else 0.0
+        qa_template_id = str(self.qa_template_json.get("version", obj.get("qa_template_id", "unknown")))
+        sections = obj.get("sections_applied")
+        if not isinstance(sections, list):
+            sections = ["COMMON", str(incident_type).upper()]
+        return {
+            "evaluator_agent_id": str(obj.get("evaluator_agent_id", "qa-agent")),
+            "qa_template_id": qa_template_id,
+            "incident_type": str(obj.get("incident_type", incident_type)),
+            "sections_applied": [str(s) for s in sections],
+            "items": norm_items,
+            "total_points_awarded": total_awarded,
+            "total_points_possible": total_possible,
+            "normalized_score": max(0.0, min(100.0, normalized)),
+            "parse_retry_count": 0,
+            "notes": str(obj.get("notes", "")).strip(),
+        }
+
+    def _conversation_rows(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for ev in events:
+            if ev.get("event_type") != "conversation":
+                continue
+            rows.append(
+                {
+                    "turn": int(ev.get("turn", 0) or 0),
+                    "call_taker": str(ev.get("call_taker", "")),
+                    "caller": str(ev.get("caller", "")),
+                }
+            )
+        return rows
+
+    def _template_item_index(self, incident_type: str) -> dict[str, dict[str, Any]]:
+        out: dict[str, dict[str, Any]] = {}
+        templates = self.qa_template_json.get("templates", {})
+        if not isinstance(templates, dict):
+            return out
+        for key in ("COMMON", incident_type):
+            block = templates.get(key)
+            if not isinstance(block, dict):
+                continue
+            for sec in block.get("sections", []):
+                if not isinstance(sec, dict):
+                    continue
+                for item in sec.get("items", []):
+                    if isinstance(item, dict) and item.get("id"):
+                        out[str(item["id"])] = {
+                            "points": float(item.get("points", 0.0) or 0.0),
+                        }
+        return out
+
+    def _extract_text(self, resp: Any) -> str:
+        output_text = str(getattr(resp, "output_text", "") or "").strip()
+        if output_text:
+            return output_text
+        output = getattr(resp, "output", None)
+        if isinstance(output, list):
+            chunks: list[str] = []
+            for item in output:
+                content = getattr(item, "content", None)
+                if isinstance(content, list):
+                    for part in content:
+                        txt = str(getattr(part, "text", "") or "").strip()
+                        if txt:
+                            chunks.append(txt)
+            joined = "\n".join(chunks).strip()
+            if joined:
+                return joined
+        return ""
 
 
 def _create_openai_caller(

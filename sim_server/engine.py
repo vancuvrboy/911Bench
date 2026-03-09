@@ -211,6 +211,12 @@ class SimulationEngine:
     def calltaker_end_call(self, incident_id: str, reason: str, reason_detail: str | None = None) -> dict[str, Any]:
         ep = self._get_running_episode(incident_id)
         reason = str(reason or "").strip() or "other"
+        allowed_reasons = {"responders_arrived", "resolved_no_dispatch", "caller_disconnected", "prank_call", "other"}
+        if reason not in allowed_reasons:
+            raise StateError(
+                "invalid_end_reason",
+                f"unsupported end reason: {reason}",
+            )
         if ep.dispatch_triggered:
             if not ep.responders_arrived and reason != "responders_arrived":
                 raise StateError(
@@ -481,6 +487,9 @@ class SimulationEngine:
         incident_id: str,
         *,
         qa_score: dict[str, Any] | None = None,
+        qa_input: dict[str, Any] | None = None,
+        qa_report_markdown: str | None = None,
+        qa_report_html: str | None = None,
         extra_meta: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         ep = self._get_episode(incident_id)
@@ -527,6 +536,12 @@ class SimulationEngine:
                     "normalized_score": qa_score.get("normalized_score"),
                     "incident_type": qa_score.get("incident_type"),
                 }
+        if qa_input is not None:
+            meta["artifact_hashes"]["qa_input.json.sha256"] = _hash_obj(qa_input)
+        if qa_report_markdown is not None:
+            meta["artifact_hashes"]["qa_report.md.sha256"] = hashlib.sha256(qa_report_markdown.encode("utf-8")).hexdigest()
+        if qa_report_html is not None:
+            meta["artifact_hashes"]["qa_report.html.sha256"] = hashlib.sha256(qa_report_html.encode("utf-8")).hexdigest()
         if extra_meta:
             meta.update(extra_meta)
 
@@ -537,6 +552,12 @@ class SimulationEngine:
         }
         if qa_score is not None:
             out["qa_score.json"] = qa_score
+        if qa_input is not None:
+            out["qa_input.json"] = qa_input
+        if qa_report_markdown is not None:
+            out["qa_report.md"] = qa_report_markdown
+        if qa_report_html is not None:
+            out["qa_report.html"] = qa_report_html
         return out
 
     def save_artifact_bundle(
@@ -547,9 +568,19 @@ class SimulationEngine:
         run_id: str,
         episode_id: str | None = None,
         qa_score: dict[str, Any] | None = None,
+        qa_input: dict[str, Any] | None = None,
+        qa_report_markdown: str | None = None,
+        qa_report_html: str | None = None,
         extra_meta: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        bundle = self.build_artifact_bundle(incident_id, qa_score=qa_score, extra_meta=extra_meta)
+        bundle = self.build_artifact_bundle(
+            incident_id,
+            qa_score=qa_score,
+            qa_input=qa_input,
+            qa_report_markdown=qa_report_markdown,
+            qa_report_html=qa_report_html,
+            extra_meta=extra_meta,
+        )
         ep = self._get_episode(incident_id)
 
         def _slug(value: str) -> str:

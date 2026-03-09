@@ -197,6 +197,7 @@ function render(data) {
     agent_profiles: data.agent_profiles || {},
     pending_turn: data.pending_turn || 0,
     has_pending_caller: Boolean(data.pending_caller_text),
+    auto_qa_on_seal: Boolean(data.runtime_options?.auto_qa_on_seal),
   });
   $("locationView").textContent = pretty(data.location_panel || {});
   $("cadView").textContent = pretty({
@@ -258,6 +259,7 @@ async function setupEpisode() {
       calltaker_agent_id: calltakerAgentId,
       qa_agent_id: qaAgentId,
       max_turns: Number($("maxTurns").value || 20),
+      auto_qa_on_seal: Boolean($("autoQaOnSeal").checked),
     };
     const out = await api.post("/api/admin/load_start", body);
     if (out.scenario_id) $("scenarioId").value = out.scenario_id;
@@ -305,7 +307,11 @@ async function autoLoopTick() {
     const out = await api.post("/api/agent/auto_step", { turns: 1 });
     await refresh();
     if (String(out.phase || "") === "sealed") {
-      $("setupStatus").textContent = "Episode sealed.";
+      if (state.last_qa_score && state.last_qa_score.normalized_score != null) {
+        $("setupStatus").textContent = `Episode sealed. QA score: ${Number(state.last_qa_score.normalized_score).toFixed(2)}`;
+      } else {
+        $("setupStatus").textContent = "Episode sealed.";
+      }
       stopAutoLoop();
       return;
     }
