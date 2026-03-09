@@ -69,3 +69,22 @@ Phase 4 end-to-end pipeline block (planned 19 PIPE IDs from v2.1 manifest):
 ```bash
 python3 -m tests.harness.phase4_pipeline --root . --output-dir tests/results
 ```
+
+Headless SIM experiment runner (manifest-driven, external output root supported):
+
+```bash
+python3 -m tests.harness.experiment_runner \
+  --root . \
+  --manifest tests/cases/sim_experiment_manifest.sample.json \
+  --results-root ../911Bench-Experiments/results
+```
+
+Notes:
+- `--results-root` can point to a sibling experiments repo.
+- Output bundle per run includes:
+  - `summary.json`
+  - `summary.csv`
+  - `manifest.resolved.json`
+  - `episodes/*_events.ndjson`
+  - `episodes/*_qa_score.json`
+  - `episodes/*_meta.json`

@@ -38,11 +38,20 @@ def _normalize_events_for_replay(events: list[dict[str, Any]]) -> list[dict[str,
 
 
 class SimEpisodeRunner:
-    def __init__(self, root: Path, output_dir: Path, mode: str, replay_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        root: Path,
+        output_dir: Path,
+        mode: str,
+        replay_dir: Path | None = None,
+        run_subdir: str | None = None,
+    ) -> None:
         self.root = root
         self.output_dir = output_dir
         self.mode = mode
         self.replay_dir = replay_dir
+        self.run_subdir = (run_subdir or "").strip() or None
+        self._active_run_dir: Path | None = None
 
     def run_episode(
         self,
@@ -187,8 +196,11 @@ class SimEpisodeRunner:
         }
 
     def _run_dir(self) -> Path:
-        stamp = dt.datetime.now().strftime("sim_agents_%Y%m%d_%H%M%S")
-        return self.output_dir / stamp
+        if self._active_run_dir is not None:
+            return self._active_run_dir
+        stamp = self.run_subdir or dt.datetime.now().strftime("sim_agents_%Y%m%d_%H%M%S")
+        self._active_run_dir = self.output_dir / stamp
+        return self._active_run_dir
 
     def _replay_path(self, scenario_name: str) -> Path:
         base = self.replay_dir or (self.root / "fixtures" / "sim")

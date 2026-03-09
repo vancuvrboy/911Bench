@@ -1,0 +1,26 @@
+{
+  "experiment_id": "phase1_baseline",
+  "mode": "live",
+  "scenarios": [
+    {
+      "scenario_name": "fire_baseline",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "repetitions": 3,
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "no_dispatch_control",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "repetitions": 2,
+      "max_turns": 8,
+      "calltaker_config": {
+        "dispatch_enabled": false,
+        "resolve_no_dispatch_turn": 5
+      }
+    }
+  ]
+}
