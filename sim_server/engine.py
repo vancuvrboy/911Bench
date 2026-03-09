@@ -208,25 +208,36 @@ class SimulationEngine:
             "cad_update_result": cad_update_result,
         }
 
-    def calltaker_end_call(self, incident_id: str, reason: str, reason_detail: str | None = None) -> dict[str, Any]:
+    def calltaker_end_call(
+        self,
+        incident_id: str,
+        reason: str,
+        reason_detail: str | None = None,
+        human_override: bool = False,
+    ) -> dict[str, Any]:
         ep = self._get_running_episode(incident_id)
         reason = str(reason or "").strip() or "other"
-        allowed_reasons = {"responders_arrived", "resolved_no_dispatch", "caller_disconnected", "prank_call", "other"}
+        automated_allowed_reasons = {"responders_arrived", "resolved_no_dispatch", "caller_disconnected", "prank_call", "other"}
+        allowed_reasons = automated_allowed_reasons | {"terminated_by_human"} if human_override else automated_allowed_reasons
         if reason not in allowed_reasons:
             raise StateError(
                 "invalid_end_reason",
                 f"unsupported end reason: {reason}",
             )
-        if ep.dispatch_triggered:
-            if not ep.responders_arrived and reason != "responders_arrived":
-                raise StateError(
-                    "invalid_end_reason",
-                    "dispatch already triggered; cannot end call before responders_arrived",
-                )
-        if reason == "responders_arrived" and not ep.responders_arrived:
-            raise StateError("invalid_end_reason", "responders have not arrived yet")
-        if reason == "resolved_no_dispatch" and ep.dispatch_triggered:
-            raise StateError("invalid_end_reason", "dispatch already triggered; use responders_arrived path")
+
+        # Keep end-reason consistency checks active for all standard reasons.
+        # "terminated_by_human" is the explicit manual override reason.
+        if reason != "terminated_by_human":
+            if ep.dispatch_triggered:
+                if not ep.responders_arrived and reason != "responders_arrived":
+                    raise StateError(
+                        "invalid_end_reason",
+                        "dispatch already triggered; cannot end call before responders_arrived",
+                    )
+            if reason == "responders_arrived" and not ep.responders_arrived:
+                raise StateError("invalid_end_reason", "responders have not arrived yet")
+            if reason == "resolved_no_dispatch" and ep.dispatch_triggered:
+                raise StateError("invalid_end_reason", "dispatch already triggered; use responders_arrived path")
         if reason == "caller_disconnected":
             self._append_system(ep, subtype="call_dropped", text="Caller disconnected.")
 

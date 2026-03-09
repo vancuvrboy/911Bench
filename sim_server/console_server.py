@@ -62,6 +62,7 @@ class ConsoleState:
     last_qa_input: dict[str, Any] | None = None
     last_qa_report_markdown: str | None = None
     last_qa_report_html: str | None = None
+    last_qa_error: str | None = None
 
 
 class ConsoleHandler(BaseHTTPRequestHandler):
@@ -224,10 +225,12 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             self._send_json(out)
             return
         if path == "/api/end_call":
+            calltaker_manual = is_manual("calltaker", self.app.calltaker_agent_id, config_root=self.app.agent_config_root)
             out = self.app.engine.calltaker_end_call(
                 incident_id=incident_id,
                 reason=str(payload.get("reason", "other")),
                 reason_detail=str(payload.get("reason_detail", "")) or None,
+                human_override=bool(calltaker_manual),
             )
             self._maybe_autosave_sealed(incident_id, reason="end_call")
             self._send_json(out)
@@ -335,6 +338,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.last_qa_input = None
         self.app.last_qa_report_markdown = None
         self.app.last_qa_report_html = None
+        self.app.last_qa_error = None
         self._send_json(
             {
                 "loaded": loaded,
@@ -386,6 +390,11 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 "calltaker": self.app.calltaker_agent_id,
                 "qa": self.app.qa_agent_id,
             },
+            "agent_profile_modes": {
+                "caller": get_profile("caller", self.app.caller_agent_id, config_root=self.app.agent_config_root).mode,
+                "calltaker": get_profile("calltaker", self.app.calltaker_agent_id, config_root=self.app.agent_config_root).mode,
+                "qa": get_profile("qa", self.app.qa_agent_id, config_root=self.app.agent_config_root).mode,
+            },
             "runtime_options": {
                 "auto_qa_on_seal": bool(self.app.auto_qa_on_seal),
             },
@@ -409,6 +418,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             },
             "last_qa_score": self.app.last_qa_score,
             "last_qa_available": bool(self.app.last_qa_score),
+            "last_qa_error": self.app.last_qa_error,
             "artifacts": {
                 "run_id": self.app.run_id,
                 "auto_save_on_end": bool(self.app.auto_save_on_end),
@@ -705,28 +715,33 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         return saved
 
     def _maybe_autosave_sealed(self, incident_id: str, reason: str) -> None:
-        if not self.app.auto_save_on_end:
-            return
         phase = self.app.engine.plant_get_state_snapshot(incident_id).get("episode_phase")
         if phase != "sealed":
             return
+        # Auto-QA is independent from artifact auto-save.
         self._auto_evaluate_qa_if_needed(incident_id)
+        if not self.app.auto_save_on_end:
+            return
         if self.app.saved_artifacts and self.app.saved_artifacts[-1].get("incident_id") == incident_id:
             return
         self._save_current_episode_artifacts(incident_id=incident_id, reason=reason)
 
     def _auto_evaluate_qa_if_needed(self, incident_id: str) -> None:
         if not self.app.auto_qa_on_seal:
+            self.app.last_qa_error = "auto_qa_on_seal disabled"
             return
         if self.app.last_qa_score is not None:
             return
         if is_manual("qa", self.app.qa_agent_id, config_root=self.app.agent_config_root):
+            self.app.last_qa_error = "qa profile is manual"
             return
         if self.app.qa_agent is None:
+            self.app.last_qa_error = "qa profile is not callable"
             return
         try:
             self._evaluate_qa(incident_id)
-        except Exception:
+        except Exception as exc:
+            self.app.last_qa_error = f"auto_qa_failed: {exc}"
             return
 
     def _evaluate_qa(self, incident_id: str) -> None:
@@ -736,7 +751,14 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         incident_type = str((self.app.incident_seed or {}).get("type", "Unknown"))
         qa_template = self.app.qa_seed or {}
         qa_input = build_qa_input(events=events, qa_template=qa_template, incident_type=incident_type)
-        qa_score = self.app.qa_agent.evaluate(events=events, incident_type=incident_type, qa_input=qa_input)
+        try:
+            qa_score = self.app.qa_agent.evaluate(events=events, incident_type=incident_type, qa_input=qa_input)
+        except TypeError as exc:
+            # Backward compatibility: deterministic evaluator uses evaluate(events, incident_type)
+            # while OpenAI evaluator supports evaluate(..., qa_input=...).
+            if "qa_input" not in str(exc):
+                raise
+            qa_score = self.app.qa_agent.evaluate(events=events, incident_type=incident_type)
         reports = build_qa_reports(
             qa_score=qa_score,
             qa_template=qa_template,
@@ -747,6 +769,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         self.app.last_qa_score = qa_score
         self.app.last_qa_report_markdown = reports["markdown"]
         self.app.last_qa_report_html = reports["html"]
+        self.app.last_qa_error = None
 
     def _api_artifacts_save(self, payload: dict[str, Any]) -> dict[str, Any]:
         incident_id = str(payload.get("incident_id", "")).strip() or self._incident_or_400()

@@ -182,6 +182,24 @@ function renderSystemMessages(data) {
   });
 }
 
+function updateEndReasonOptions(data) {
+  const select = $("endReason");
+  if (!select) return;
+  const calltakerModeFromState = String(data.agent_profile_modes?.calltaker || "");
+  const calltakerId = data.agent_profiles?.calltaker || $("calltakerAgentId").value;
+  const calltakerProfile = profileFor("calltaker", calltakerId);
+  const isManualCallTaker = calltakerModeFromState
+    ? calltakerModeFromState === "manual"
+    : Boolean(calltakerProfile && calltakerProfile.mode === "manual");
+  const humanOption = Array.from(select.options).find((opt) => opt.value === "terminated_by_human");
+  if (!humanOption) return;
+  humanOption.hidden = !isManualCallTaker;
+  humanOption.disabled = !isManualCallTaker;
+  if (!isManualCallTaker && select.value === "terminated_by_human") {
+    select.value = "other";
+  }
+}
+
 function render(data) {
   state = data;
   $("metricsView").textContent = pretty({
@@ -207,10 +225,13 @@ function render(data) {
   });
   renderTranscript(data);
   renderSystemMessages(data);
+  updateEndReasonOptions(data);
   renderInbox("checkpointInbox", data.checkpoint_inbox || [], false);
   renderInbox("escalationInbox", data.escalation_inbox || [], true);
   if (data.last_qa_score) {
     $("setupStatus").textContent = `QA score: ${Number(data.last_qa_score.normalized_score || 0).toFixed(2)}`;
+  } else if (data.phase === "sealed" && data.last_qa_error) {
+    $("setupStatus").textContent = `QA not available: ${data.last_qa_error}`;
   }
 }
 
