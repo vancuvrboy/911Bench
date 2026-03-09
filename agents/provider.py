@@ -1111,7 +1111,7 @@ class OpenAIQAEvaluatorAgent:
                     response_id = ""
                     raw = str(resp.choices[0].message.content or "").strip()
                 parsed = self._parse_json_payload(raw)
-                normalized = self._normalize_score_payload(parsed, incident_type=incident_type)
+                normalized = self._normalize_score_payload(parsed, incident_type=incident_type, qa_input=packet)
                 normalized["parse_retry_count"] = retries
                 normalized["evaluator_model"] = self.model
                 normalized["evaluator_source"] = "openai_responses" if self.use_responses_api else "openai_chat"
@@ -1165,10 +1165,11 @@ class OpenAIQAEvaluatorAgent:
             raise ValueError("invalid_qa_json_object")
         return obj
 
-    def _normalize_score_payload(self, obj: dict[str, Any], incident_type: str) -> dict[str, Any]:
+    def _normalize_score_payload(self, obj: dict[str, Any], incident_type: str, qa_input: dict[str, Any] | None = None) -> dict[str, Any]:
         if "normalized_score" not in obj:
             raise ValueError("qa_missing_normalized_score")
         template_idx = self._template_item_index(str(incident_type).upper())
+        transcript = (qa_input or {}).get("transcript", []) if isinstance(qa_input, dict) else []
         items = obj.get("items") if isinstance(obj.get("items"), list) else []
         if not items and isinstance(obj.get("rows"), list):
             items = obj.get("rows")
@@ -1193,17 +1194,24 @@ class OpenAIQAEvaluatorAgent:
                     ans = "NO"
                 else:
                     ans = "YES"
+            # Policy hardening: if call-taker clearly asked the required question,
+            # award full credit even when caller refused/couldn't answer.
+            if ans in {"REFUSED", "NO"} and pp > 0 and self._was_required_question_clearly_asked(
+                item_id=item_id,
+                template_row=tpl,
+                transcript=transcript,
+            ):
+                ans = "YES"
             # Resolve inconsistent model outputs deterministically:
             # if positive points are awarded, treat as YES regardless of answer token.
             if pp > 0 and pa > 0 and ans != "YES":
                 ans = "YES"
-            if pp > 0 and pa <= 0 and ans == "YES":
-                ans = "NO"
             # Enforce binary/no-partial scoring policy:
             # YES => full points; NO/REFUSED/NA => 0
             pa = pp if ans == "YES" else 0.0
             awarded += pa
-            possible += pp
+            # NA items are excluded from normalization denominator.
+            possible += 0.0 if ans == "NA" else pp
             norm_items.append(
                 {
                     "id": item_id,
@@ -1235,6 +1243,51 @@ class OpenAIQAEvaluatorAgent:
             "notes": str(obj.get("notes", "")).strip(),
         }
 
+    def _was_required_question_clearly_asked(
+        self,
+        *,
+        item_id: str,
+        template_row: dict[str, Any],
+        transcript: Any,
+    ) -> bool:
+        if not isinstance(transcript, list) or not transcript:
+            return False
+        ct_lines = [str(r.get("call_taker", "")).lower() for r in transcript if isinstance(r, dict)]
+        if not ct_lines:
+            return False
+
+        q = str(template_row.get("question", "")).strip().lower()
+        if not q:
+            return False
+
+        # Fast path for common interview fields.
+        special_patterns: list[tuple[list[str], list[str]]] = [
+            (["name"], ["name", "who am i speaking", "your name"]),
+            (["location", "address"], ["where", "address", "location", "what is the address"]),
+            (["phone", "callback", "number"], ["phone", "number", "callback", "call back"]),
+            (["people", "involved"], ["who is involved", "anyone else", "how many people"]),
+            (["relationship"], ["relationship", "do you know", "how do you know"]),
+        ]
+        for q_terms, prompts in special_patterns:
+            if any(term in q for term in q_terms):
+                return any(any(p in line for p in prompts) for line in ct_lines)
+
+        # Generic lexical match: require at least 2 meaningful question tokens in a single line.
+        stop = {
+            "the", "and", "for", "are", "you", "your", "with", "what", "when", "where",
+            "which", "that", "this", "from", "have", "has", "been", "was", "were", "can",
+            "could", "would", "should", "please", "tell", "about", "there", "they", "them",
+            "is", "it", "to", "of", "in", "on", "a", "an",
+        }
+        tokens = [t for t in re.findall(r"[a-z0-9]+", q) if len(t) >= 4 and t not in stop]
+        if len(tokens) < 2:
+            return False
+        for line in ct_lines:
+            matches = sum(1 for t in set(tokens) if t in line)
+            if matches >= 2:
+                return True
+        return False
+
     def _conversation_rows(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for ev in events:
@@ -1265,6 +1318,7 @@ class OpenAIQAEvaluatorAgent:
                     if isinstance(item, dict) and item.get("id"):
                         out[str(item["id"])] = {
                             "points": float(item.get("points", 0.0) or 0.0),
+                            "question": str(item.get("question", "")),
                         }
         return out
 

@@ -47,6 +47,11 @@ def run_experiment(
     run_root.mkdir(parents=True, exist_ok=True)
 
     mode = str(manifest.get("mode", "live"))
+    defaults = manifest.get("defaults") if isinstance(manifest.get("defaults"), dict) else {}
+    default_caller_agent_id = str(defaults.get("caller_agent_id", "deterministic_v1"))
+    default_calltaker_agent_id = str(defaults.get("calltaker_agent_id", "deterministic_v1"))
+    default_qa_agent_id = str(defaults.get("qa_agent_id", "deterministic_v1"))
+    default_agent_config_root = defaults.get("agent_config_root", "agents/config")
     replay_dir = None
     if manifest.get("replay_dir"):
         replay_dir = _resolve_path(root, str(manifest["replay_dir"]))
@@ -78,12 +83,21 @@ def run_experiment(
                 max_turns=int(scenario.get("max_turns", 20)),
                 calltaker_config=scenario.get("calltaker_config"),
                 qa_config=scenario.get("qa_config"),
+                caller_agent_id=str(scenario.get("caller_agent_id", default_caller_agent_id)),
+                calltaker_agent_id=str(scenario.get("calltaker_agent_id", default_calltaker_agent_id)),
+                qa_agent_id=str(scenario.get("qa_agent_id", default_qa_agent_id)),
+                agent_config_root=_resolve_path(root, str(scenario.get("agent_config_root", default_agent_config_root))),
             )
             qa_score = outcome.get("qa_score") or {}
             rows.append(
                 {
                     "scenario": run_name,
+                    "caller_file": str(scenario["caller_file"]),
+                    "incident_file": str(scenario["incident_file"]),
                     "incident_type": outcome.get("incident_type"),
+                    "caller_agent_id": str(scenario.get("caller_agent_id", default_caller_agent_id)),
+                    "calltaker_agent_id": str(scenario.get("calltaker_agent_id", default_calltaker_agent_id)),
+                    "qa_agent_id": str(scenario.get("qa_agent_id", default_qa_agent_id)),
                     "termination_reason": outcome.get("termination_reason"),
                     "turn_count": int(outcome.get("turn_count", 0)),
                     "dispatch_turn": outcome.get("dispatch_turn"),
@@ -112,7 +126,12 @@ def run_experiment(
             fh,
             fieldnames=[
                 "scenario",
+                "caller_file",
+                "incident_file",
                 "incident_type",
+                "caller_agent_id",
+                "calltaker_agent_id",
+                "qa_agent_id",
                 "termination_reason",
                 "turn_count",
                 "dispatch_turn",

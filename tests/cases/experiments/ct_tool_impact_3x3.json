@@ -1,0 +1,155 @@
+{
+  "experiment_id": "ct_tool_impact_3x3",
+  "mode": "live",
+  "defaults": {
+    "agent_config_root": "agents/config",
+    "caller_agent_id": "openai_gpt4o_mini_v1",
+    "qa_agent_id": "openai_gpt4o_mini_v1"
+  },
+  "scenarios": [
+    {
+      "scenario_name": "syn__coop__fire",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__coop__fire",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__coop__police",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_police_domestic.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__coop__police",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_police_domestic.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__coop__ems",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_ems_cardiac.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__coop__ems",
+      "caller_file": "fixtures/caller_cooperative_calm.json",
+      "incident_file": "fixtures/incident_ems_cardiac.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__uncoop__fire",
+      "caller_file": "fixtures/caller_uncooperative.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__uncoop__fire",
+      "caller_file": "fixtures/caller_uncooperative.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__uncoop__police",
+      "caller_file": "fixtures/caller_uncooperative.json",
+      "incident_file": "fixtures/incident_police_domestic.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__uncoop__police",
+      "caller_file": "fixtures/caller_uncooperative.json",
+      "incident_file": "fixtures/incident_police_domestic.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__uncoop__ems",
+      "caller_file": "fixtures/caller_uncooperative.json",
+      "incident_file": "fixtures/incident_ems_cardiac.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__uncoop__ems",
+      "caller_file": "fixtures/caller_uncooperative.json",
+      "incident_file": "fixtures/incident_ems_cardiac.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__askonce__fire",
+      "caller_file": "fixtures/caller_on_ask_once.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__askonce__fire",
+      "caller_file": "fixtures/caller_on_ask_once.json",
+      "incident_file": "fixtures/incident_fire_residential.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__askonce__police",
+      "caller_file": "fixtures/caller_on_ask_once.json",
+      "incident_file": "fixtures/incident_police_domestic.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__askonce__police",
+      "caller_file": "fixtures/caller_on_ask_once.json",
+      "incident_file": "fixtures/incident_police_domestic.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "syn__askonce__ems",
+      "caller_file": "fixtures/caller_on_ask_once.json",
+      "incident_file": "fixtures/incident_ems_cardiac.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_synthetic_v1",
+      "max_turns": 20
+    },
+    {
+      "scenario_name": "nocad__askonce__ems",
+      "caller_file": "fixtures/caller_on_ask_once.json",
+      "incident_file": "fixtures/incident_ems_cardiac.json",
+      "qa_file": "fixtures/qaTemplate_003.json",
+      "calltaker_agent_id": "openai_gpt4o_mini_nocad",
+      "max_turns": 20
+    }
+  ]
+}

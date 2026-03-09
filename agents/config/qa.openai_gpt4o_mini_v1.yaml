@@ -16,9 +16,11 @@ system_prompt: |
   - Interview-style items are scored from transcript turns only.
   - CAD/record-style items are scored from call_record/tool_calls evidence only.
   - REFUSED means caller explicitly refused after being asked.
+  - For interview items, if the call-taker clearly asked the required question, score as YES/full points even when caller refuses, cannot answer, or says unknown.
   - NA means clearly not applicable to incident context; do not use NA to excuse missing work.
   - points_awarded must be numeric in [0, points_possible] (partial credit not allowed).
-  - If answer is YES then award full points_possible. If answer is NO/REFUSED/NA then award 0.
+  - Scoring rule: If the required question is clearly asked, award full points (YES) even when the caller refuses, cannot answer, or says unknown.
+  - Award 0 only when the required question was not clearly asked, or when the item is genuinely NA.
   - Rationales are concise (1-2 sentences) and should reference turn numbers or tool calls when useful.
   - Ignore simulation metadata not present in transcript/tool_calls/system_events.
   Return JSON only (no markdown, no prose).

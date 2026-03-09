@@ -9,8 +9,18 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agents import CallTakerAgent, CallerAgent, QAEvaluatorAgent
+from agents import (
+    CallTakerAgent,
+    CallerAgent,
+    QAEvaluatorAgent,
+    create_calltaker_agent,
+    create_caller_agent,
+    create_qa_agent,
+    is_manual,
+    is_replay,
+)
 from sim_server import SimulationEngine
+from sim_server.errors import StateError
 from sim_server.schema_utils import load_json
 from tests.harness.event_validator import parse_ndjson, validate_event_stream
 
@@ -62,6 +72,10 @@ class SimEpisodeRunner:
         max_turns: int = 20,
         calltaker_config: dict[str, Any] | None = None,
         qa_config: dict[str, Any] | None = None,
+        caller_agent_id: str = "deterministic_v1",
+        calltaker_agent_id: str = "deterministic_v1",
+        qa_agent_id: str = "deterministic_v1",
+        agent_config_root: str | Path | None = None,
     ) -> dict[str, Any]:
         caller = load_json(self.root / caller_file)
         incident = load_json(self.root / incident_file)
@@ -80,9 +94,32 @@ class SimEpisodeRunner:
         incident_id = load["incident_id"]
         engine.episode_start(incident_id)
 
-        caller_agent = CallerAgent(caller_json=caller, incident_json=incident)
-        calltaker_agent = CallTakerAgent(incident_json=incident, **(calltaker_config or {}))
-        qa_agent = QAEvaluatorAgent(qa_template_json=qa_template, **(qa_config or {}))
+        caller_agent = create_caller_agent(
+            caller_agent_id,
+            caller_json=caller,
+            incident_json=incident,
+            config_root=agent_config_root,
+        )
+        calltaker_agent = create_calltaker_agent(
+            calltaker_agent_id,
+            incident_json=incident,
+            qa_template_json=qa_template,
+            config_root=agent_config_root,
+            **(calltaker_config or {}),
+        )
+        qa_agent = create_qa_agent(
+            qa_agent_id,
+            qa_template_json=qa_template,
+            config_root=agent_config_root,
+            **(qa_config or {}),
+        )
+
+        if caller_agent is None or is_manual("caller", caller_agent_id, config_root=agent_config_root) or is_replay("caller", caller_agent_id, config_root=agent_config_root):
+            raise ValueError(f"caller_agent_id={caller_agent_id} is not callable for headless runner")
+        if calltaker_agent is None or is_manual("calltaker", calltaker_agent_id, config_root=agent_config_root) or is_replay("calltaker", calltaker_agent_id, config_root=agent_config_root):
+            raise ValueError(f"calltaker_agent_id={calltaker_agent_id} is not callable for headless runner")
+        if qa_agent is None or is_manual("qa", qa_agent_id, config_root=agent_config_root) or is_replay("qa", qa_agent_id, config_root=agent_config_root):
+            raise ValueError(f"qa_agent_id={qa_agent_id} is not callable for headless runner")
 
         event_cursor = 0
         replay_steps = self._load_replay_steps(scenario_name)
@@ -141,10 +178,25 @@ class SimEpisodeRunner:
             )
 
             if end_call:
-                engine.calltaker_end_call(incident_id=incident_id, reason=end_reason or "other")
+                requested_reason = str(end_reason or "other")
+                try:
+                    engine.calltaker_end_call(incident_id=incident_id, reason=requested_reason)
+                except StateError as exc:
+                    # Some LLM outputs assert invalid end reasons prematurely.
+                    # Keep the episode running and let normal turn/max_turn logic resolve.
+                    engine.plant_emit_event(
+                        {
+                            "event_type": "system",
+                            "incident_id": incident_id,
+                            "subtype": "runner_end_call_rejected",
+                            "turn": int(snapshot.get("record_version", 0)),
+                            "text": f"end_call_rejected:{requested_reason}",
+                            "detail": {"error": str(exc)},
+                        }
+                    )
 
             if len(recorded_steps) > max_turns + 5:
-                engine.calltaker_end_call(incident_id=incident_id, reason="max_turns", reason_detail="runner_safety_stop")
+                engine.calltaker_end_call(incident_id=incident_id, reason="other", reason_detail="runner_safety_stop")
 
         ev_blob = engine.artifact_get(incident_id, "_events.ndjson")["content"]
         events = parse_ndjson(ev_blob)
@@ -163,6 +215,9 @@ class SimEpisodeRunner:
                     "mode": self.mode,
                     "steps": len(recorded_steps),
                     "events": len(events),
+                    "caller_agent_id": caller_agent_id,
+                    "calltaker_agent_id": calltaker_agent_id,
+                    "qa_agent_id": qa_agent_id,
                     "schema_errors": schema_errors,
                     "prompt_hashes": {
                         "caller": _sha256_text("caller-deterministic-prompt-v1"),
